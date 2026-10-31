@@ -1,6 +1,26 @@
 import { Suspense } from "react";
-import Link from "next/link";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Container,
+  Group,
+  NativeSelect,
+  Paper,
+  Skeleton,
+  Stack,
+  Table,
+  TableScrollContainer,
+  TableTbody,
+  TableTd,
+  TableTh,
+  TableThead,
+  TableTr,
+  Text,
+  Title,
+} from "@mantine/core";
 import { AccessDenied } from "@/components/access-denied";
+import { AppAnchor } from "@/components/app-anchor";
 import { Pagination } from "@/components/pagination";
 import { RuleError } from "@/lib/errors";
 import { invoiceFilterSchema } from "@/lib/validation/invoice";
@@ -8,16 +28,26 @@ import { listCustomerOptions, listInvoices } from "@/server/services/invoices";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
-const inputClass = "rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
+const STATUS_COLOUR = { DRAFT: "gray", CONFIRMED: "indigo", PAID: "green" } as const;
+const numeric = { fontVariantNumeric: "tabular-nums" } as const;
 
 export default function InvoicesPage({ searchParams }: { searchParams: Search }) {
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
-      <h1 className="text-2xl font-semibold">Invoices</h1>
-      <Suspense fallback={<p className="text-sm text-zinc-400">Loading invoices...</p>}>
-        <InvoiceList searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <Container size="lg" py="lg" w="100%">
+      <Stack gap="lg">
+        <Title order={1} fz="h2">Invoices</Title>
+        <Suspense
+          fallback={
+            <Stack gap="sm" aria-busy="true" aria-label="Loading invoices">
+              <Skeleton h={54} w="60%" />
+              <Skeleton h={320} />
+            </Stack>
+          }
+        >
+          <InvoiceList searchParams={searchParams} />
+        </Suspense>
+      </Stack>
+    </Container>
   );
 }
 
@@ -39,64 +69,75 @@ async function InvoiceList({ searchParams }: { searchParams: Search }) {
 
   const filtered = Boolean(parsed.status || parsed.overdue || parsed.customerId);
   return (
-    <>
-      <form method="get" className="flex flex-wrap items-center gap-2">
-        <select name="status" defaultValue={parsed.status ?? ""} className={inputClass} aria-label="Status">
-          <option value="">All statuses</option>
-          <option value="DRAFT">Draft</option>
-          <option value="CONFIRMED">Confirmed</option>
-          <option value="PAID">Paid</option>
-        </select>
-        <select name="customerId" defaultValue={parsed.customerId ?? ""} className={inputClass} aria-label="Customer">
-          <option value="">All customers</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="overdue" value="1" defaultChecked={parsed.overdue} /> Overdue only
-        </label>
-        <button className="rounded-md border border-zinc-700 px-4 py-2 text-sm">Filter</button>
-        {filtered && <Link href="/invoices" className="text-sm text-zinc-400 underline">Clear</Link>}
+    <Stack gap="lg">
+      <form method="get">
+        <Group align="flex-end" gap="sm" wrap="wrap">
+          <NativeSelect
+            name="status"
+            label="Status"
+            defaultValue={parsed.status ?? ""}
+            data={[
+              { value: "", label: "All statuses" },
+              { value: "DRAFT", label: "Draft" },
+              { value: "CONFIRMED", label: "Confirmed" },
+              { value: "PAID", label: "Paid" },
+            ]}
+            w={{ base: "100%", sm: 170 }}
+          />
+          <NativeSelect
+            name="customerId"
+            label="Customer"
+            defaultValue={parsed.customerId ?? ""}
+            data={[{ value: "", label: "All customers" }, ...customers.map((c) => ({ value: c.id, label: c.name }))]}
+            w={{ base: "100%", sm: 220 }}
+          />
+          <Checkbox name="overdue" value="1" label="Overdue only" defaultChecked={parsed.overdue} pb={8} />
+          <Button type="submit">Filter</Button>
+          {filtered && <AppAnchor href="/invoices" size="sm" pb={8}>Clear</AppAnchor>}
+        </Group>
       </form>
 
       {data.total === 0 ? (
-        <p className="text-sm text-zinc-400">
+        <Text size="sm" c="dimmed" maw="48ch">
           {filtered ? "No invoices match these filters." : "No invoices yet. Run billing to create them."}
-        </p>
+        </Text>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-md border border-zinc-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-900 text-zinc-400">
-                <tr>
-                  <th className="px-4 py-2">Number</th>
-                  <th className="px-4 py-2">Customer</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Invoice date</th>
-                  <th className="px-4 py-2">Due</th>
-                  <th className="px-4 py-2 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {data.rows.map((i) => (
-                  <tr key={i.id}>
-                    <td className="px-4 py-2 font-mono">
-                      <Link href={`/invoices/${i.id}`} className="underline">{i.number}</Link>
-                    </td>
-                    <td className="px-4 py-2">{i.customerName}</td>
-                    <td className="px-4 py-2">
-                      {i.status.toLowerCase()}
-                      {i.overdue && <span className="ml-2 text-red-400">overdue</span>}
-                    </td>
-                    <td className="px-4 py-2">{i.invoiceDate}</td>
-                    <td className="px-4 py-2">{i.dueDate}</td>
-                    <td className="px-4 py-2 text-right">{i.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Paper withBorder p="md">
+            <TableScrollContainer minWidth={640}>
+              <Table verticalSpacing="xs" highlightOnHover aria-label="Invoices">
+                <TableThead>
+                  <TableTr>
+                    <TableTh>Number</TableTh>
+                    <TableTh>Customer</TableTh>
+                    <TableTh>Status</TableTh>
+                    <TableTh>Invoice date</TableTh>
+                    <TableTh>Due</TableTh>
+                    <TableTh ta="right">Total</TableTh>
+                  </TableTr>
+                </TableThead>
+                <TableTbody>
+                  {data.rows.map((i) => (
+                    <TableTr key={i.id}>
+                      <TableTd>
+                        <AppAnchor href={`/invoices/${i.id}`} size="sm" ff="monospace">{i.number}</AppAnchor>
+                      </TableTd>
+                      <TableTd>{i.customerName}</TableTd>
+                      <TableTd>
+                        <Group gap={6} wrap="nowrap">
+                          <Badge variant="light" color={STATUS_COLOUR[i.status]} tt="none">{i.status.toLowerCase()}</Badge>
+                          {i.overdue && <Badge variant="light" color="red" tt="none">overdue</Badge>}
+                        </Group>
+                      </TableTd>
+                      <TableTd style={numeric}>{i.invoiceDate}</TableTd>
+                      <TableTd style={numeric}>{i.dueDate}</TableTd>
+                      <TableTd ta="right" style={numeric}>{Number(i.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableTd>
+                    </TableTr>
+                  ))}
+                </TableTbody>
+              </Table>
+            </TableScrollContainer>
+          </Paper>
           <Pagination
             basePath="/invoices"
             page={data.page}
@@ -107,6 +148,6 @@ async function InvoiceList({ searchParams }: { searchParams: Search }) {
           />
         </>
       )}
-    </>
+    </Stack>
   );
 }

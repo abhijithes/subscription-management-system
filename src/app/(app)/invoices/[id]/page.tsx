@@ -1,19 +1,60 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  Badge,
+  Container,
+  Group,
+  Paper,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Table,
+  TableScrollContainer,
+  TableTbody,
+  TableTd,
+  TableTh,
+  TableThead,
+  TableTr,
+  Text,
+  Title,
+} from "@mantine/core";
 import { AccessDenied } from "@/components/access-denied";
+import { AppAnchor } from "@/components/app-anchor";
 import { RuleError } from "@/lib/errors";
 import { getInvoice } from "@/server/services/invoices";
 import { InvoiceActions } from "./invoice-actions";
 
+const STATUS_COLOUR = { DRAFT: "gray", CONFIRMED: "indigo", PAID: "green" } as const;
+const numeric = { fontVariantNumeric: "tabular-nums" } as const;
+const amount = (value: string) => Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-6">
-      <Suspense fallback={<p className="text-sm text-zinc-400">Loading invoice...</p>}>
-        <InvoiceDetail params={params} />
-      </Suspense>
-      <Link href="/invoices" className="block text-sm text-zinc-400 underline">Back to invoices</Link>
-    </main>
+    <Container size="md" py="lg" w="100%">
+      <Stack gap="lg">
+        <Suspense
+          fallback={
+            <Stack gap="md" aria-busy="true" aria-label="Loading the invoice">
+              <Skeleton h={34} w="40%" />
+              <Skeleton h={40} w="50%" />
+              <Skeleton h={220} />
+            </Stack>
+          }
+        >
+          <InvoiceDetail params={params} />
+        </Suspense>
+        <AppAnchor href="/invoices" size="sm">Back to invoices</AppAnchor>
+      </Stack>
+    </Container>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <Stack gap={2}>
+      <Text size="sm" c="dimmed">{label}</Text>
+      <Text style={numeric}>{value}</Text>
+    </Stack>
   );
 }
 
@@ -30,79 +71,101 @@ async function InvoiceDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <section className="space-y-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-2xl font-semibold">{invoice.number}</h1>
-          <span className="rounded border border-zinc-700 px-2 py-0.5 text-sm">{invoice.status.toLowerCase()}</span>
-          {invoice.overdue && <span className="rounded bg-red-500/20 px-2 py-0.5 text-sm text-red-400">overdue</span>}
-        </div>
-        <p className="text-sm text-zinc-400">
+      <Stack gap={6}>
+        <Group gap="sm" align="center">
+          <Title order={1} fz="h2" ff="monospace">{invoice.number}</Title>
+          <Badge variant="light" color={STATUS_COLOUR[invoice.status]} tt="none">{invoice.status.toLowerCase()}</Badge>
+          {invoice.overdue && <Badge variant="light" color="red" tt="none">overdue</Badge>}
+        </Group>
+        <Text size="sm" c="dimmed">
           {invoice.customer.name} ({invoice.customer.email}) · subscription{" "}
-          <Link href={`/subscriptions/${invoice.subscription.id}`} className="underline">{invoice.subscription.number}</Link>
-        </p>
-      </section>
+          <AppAnchor href={`/subscriptions/${invoice.subscription.id}`} size="sm">{invoice.subscription.number}</AppAnchor>
+        </Text>
+      </Stack>
 
       <InvoiceActions id={invoice.id} {...invoice.actions} />
 
-      <dl className="grid gap-4 text-sm sm:grid-cols-4">
-        <div><dt className="text-zinc-400">Invoice date</dt><dd>{invoice.invoiceDate}</dd></div>
-        <div><dt className="text-zinc-400">Due date</dt><dd>{invoice.dueDate}</dd></div>
-        <div><dt className="text-zinc-400">Billing period</dt><dd>{invoice.periodStart} to {invoice.periodEnd}</dd></div>
-        <div><dt className="text-zinc-400">Paid so far</dt><dd>{invoice.amountPaid}</dd></div>
-      </dl>
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
+        <Fact label="Invoice date" value={invoice.invoiceDate} />
+        <Fact label="Due date" value={invoice.dueDate} />
+        <Fact label="Billing period" value={`${invoice.periodStart} to ${invoice.periodEnd}`} />
+        <Fact label="Paid so far" value={amount(invoice.amountPaid)} />
+      </SimpleGrid>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium">Lines</h2>
-        <div className="overflow-x-auto rounded-md border border-zinc-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-900 text-zinc-400">
-              <tr>
-                <th className="px-4 py-2">Description</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-right">Unit price</th>
-                <th className="px-4 py-2">Tax</th>
-                <th className="px-4 py-2 text-right">Discount</th>
-                <th className="px-4 py-2 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {invoice.lines.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-4 py-2">{l.description}</td>
-                  <td className="px-4 py-2 text-right">{l.quantity}</td>
-                  <td className="px-4 py-2 text-right">{l.unitPrice}</td>
-                  <td className="px-4 py-2 text-zinc-400">{l.tax ?? "none"}</td>
-                  <td className="px-4 py-2 text-right">{l.discount}</td>
-                  <td className="px-4 py-2 text-right">{l.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <dl className="ml-auto grid max-w-xs grid-cols-2 gap-1 text-sm">
-          <dt className="text-zinc-400">Subtotal</dt><dd className="text-right">{invoice.subtotal}</dd>
-          <dt className="text-zinc-400">Discount{invoice.discountNames.length > 0 && ` (${invoice.discountNames.join(", ")})`}</dt>
-          <dd className="text-right">{invoice.discountTotal}</dd>
-          <dt className="text-zinc-400">Tax</dt><dd className="text-right">{invoice.taxTotal}</dd>
-          <dt className="font-medium">Total</dt><dd className="text-right font-medium">{invoice.total}</dd>
-        </dl>
-      </section>
+      <Stack gap="sm">
+        <Title order={2} fz="h4">Lines</Title>
+        <Paper withBorder p="md">
+          <TableScrollContainer minWidth={560}>
+            <Table verticalSpacing="xs" aria-label="Invoice lines">
+              <TableThead>
+                <TableTr>
+                  <TableTh>Description</TableTh>
+                  <TableTh ta="right">Qty</TableTh>
+                  <TableTh ta="right">Unit price</TableTh>
+                  <TableTh>Tax</TableTh>
+                  <TableTh ta="right">Discount</TableTh>
+                  <TableTh ta="right">Amount</TableTh>
+                </TableTr>
+              </TableThead>
+              <TableTbody>
+                {invoice.lines.length === 0 ? (
+                  <TableTr>
+                    <TableTd colSpan={6}><Text size="sm" c="dimmed">This invoice has no line items.</Text></TableTd>
+                  </TableTr>
+                ) : (
+                  invoice.lines.map((l) => (
+                    <TableTr key={l.id}>
+                      <TableTd>{l.description}</TableTd>
+                      <TableTd ta="right" style={numeric}>{l.quantity}</TableTd>
+                      <TableTd ta="right" style={numeric}>{amount(l.unitPrice)}</TableTd>
+                      <TableTd><Text size="sm" c="dimmed">{l.tax ?? "none"}</Text></TableTd>
+                      <TableTd ta="right" style={numeric}>{amount(l.discount)}</TableTd>
+                      <TableTd ta="right" style={numeric}>{amount(l.amount)}</TableTd>
+                    </TableTr>
+                  ))
+                )}
+              </TableTbody>
+            </Table>
+          </TableScrollContainer>
+        </Paper>
+        <Stack gap={4} ml="auto" w={{ base: "100%", sm: 280 }}>
+          {[
+            ["Subtotal", invoice.subtotal],
+            [`Discount${invoice.discountNames.length > 0 ? ` (${invoice.discountNames.join(", ")})` : ""}`, invoice.discountTotal],
+            ["Tax", invoice.taxTotal],
+          ].map(([label, value]) => (
+            <Group key={label} justify="space-between" wrap="nowrap">
+              <Text size="sm" c="dimmed">{label}</Text>
+              <Text size="sm" style={numeric}>{amount(value)}</Text>
+            </Group>
+          ))}
+          <Group justify="space-between" wrap="nowrap" pt={6} style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+            <Text fw={600}>Total</Text>
+            <Text fw={600} style={numeric}>{amount(invoice.total)}</Text>
+          </Group>
+        </Stack>
+      </Stack>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium">Payments</h2>
+      <Stack gap="sm">
+        <Title order={2} fz="h4">Payments</Title>
         {invoice.payments.length === 0 ? (
-          <p className="text-sm text-zinc-400">No payments recorded.</p>
+          <Text size="sm" c="dimmed">No payments recorded.</Text>
         ) : (
-          <ul className="divide-y divide-zinc-800 rounded-md border border-zinc-800 text-sm">
-            {invoice.payments.map((p) => (
-              <li key={p.id} className="flex justify-between gap-4 px-4 py-2">
-                <span>{p.paidAt} · {p.method}{p.note && <span className="text-zinc-400"> · {p.note}</span>}</span>
-                <span>{p.amount}</span>
-              </li>
-            ))}
-          </ul>
+          <Paper withBorder p="md">
+            <Stack gap="xs">
+              {invoice.payments.map((p) => (
+                <Group key={p.id} justify="space-between" wrap="nowrap">
+                  <Text size="sm">
+                    <Text span style={numeric}>{p.paidAt}</Text> · {p.method.replace(/_/g, " ")}
+                    {p.note && <Text span c="dimmed"> · {p.note}</Text>}
+                  </Text>
+                  <Text size="sm" style={numeric}>{amount(p.amount)}</Text>
+                </Group>
+              ))}
+            </Stack>
+          </Paper>
         )}
-      </section>
+      </Stack>
     </>
   );
 }
