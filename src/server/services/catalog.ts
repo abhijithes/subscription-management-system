@@ -1,9 +1,13 @@
 import { toMoney } from "@/lib/money";
 import type { ActionResult } from "@/lib/errors";
 import {
+  planSchema,
   productSchema,
+  taxSchema,
   variantSchema,
+  type PlanInput,
   type ProductInput,
+  type TaxInput,
   type VariantInput,
 } from "@/lib/validation/catalog";
 import { prisma } from "@/server/db";
@@ -97,4 +101,69 @@ export async function getProduct(id: string) {
       extraPrice: v.extraPrice.toFixed(2),
     })),
   };
+}
+
+export async function createPlan(input: PlanInput): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN");
+  if (denied) return denied;
+
+  const parsed = planSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+
+  const plan = await prisma.plan.create({
+    data: { ...parsed.data, price: toMoney(parsed.data.price) },
+  });
+  return { ok: true, data: { id: plan.id } };
+}
+
+export async function createTax(input: TaxInput): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN");
+  if (denied) return denied;
+
+  const parsed = taxSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+
+  const tax = await prisma.tax.create({
+    data: { name: parsed.data.name, ratePercent: toMoney(parsed.data.ratePercent) },
+  });
+  return { ok: true, data: { id: tax.id } };
+}
+
+export async function listPlans(page: number) {
+  await requireRole("ADMIN");
+  const current = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+
+  const [rows, total] = await Promise.all([
+    prisma.plan.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (current - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.plan.count(),
+  ]);
+
+  return {
+    page: current,
+    pageSize: PAGE_SIZE,
+    total,
+    rows: rows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price.toFixed(2),
+      billingPeriod: p.billingPeriod,
+      minQuantity: p.minQuantity,
+      availableFrom: p.availableFrom.toISOString().slice(0, 10),
+      availableTo: p.availableTo.toISOString().slice(0, 10),
+      autoClose: p.autoClose,
+      allowEarlyClose: p.allowEarlyClose,
+      allowPause: p.allowPause,
+      allowRenew: p.allowRenew,
+    })),
+  };
+}
+
+export async function listTaxes() {
+  await requireRole("ADMIN");
+  const taxes = await prisma.tax.findMany({ orderBy: { name: "asc" } });
+  return taxes.map((t) => ({ id: t.id, name: t.name, ratePercent: t.ratePercent.toFixed(2) }));
 }
