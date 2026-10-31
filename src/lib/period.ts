@@ -27,3 +27,35 @@ export function addPeriod(start: Date, period: BillingPeriod, n: number): Date {
       return addMonths(base, n * 12);
   }
 }
+
+/** The UTC calendar day of `d`, at midnight. */
+export function utcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** Which period of the schedule that begins at `start` starts on `current`, or null if none does. */
+function periodIndex(start: Date, period: BillingPeriod, current: Date): number | null {
+  const days = Math.round((current.getTime() - start.getTime()) / DAY_MS);
+  if (days < 0) return null;
+  const estimate = {
+    DAILY: days,
+    WEEKLY: Math.round(days / 7),
+    MONTHLY: Math.round(days / 30.4375),
+    YEARLY: Math.round(days / 365.25),
+  }[period];
+  for (let n = Math.max(0, estimate - 1); n <= estimate + 1; n++) {
+    if (addPeriod(start, period, n).getTime() === current.getTime()) return n;
+  }
+  return null;
+}
+
+/**
+ * The start of the period after the one starting on `current`. While `current` is on the
+ * subscription's own schedule (counted from `scheduleStart`) the next start stays on it, so a
+ * Jan 31 start bills Feb 28 then Mar 31. After a pause the billing date is off the schedule, so
+ * the cycle simply restarts from `current`.
+ */
+export function periodAfter(scheduleStart: Date, period: BillingPeriod, current: Date): Date {
+  const n = periodIndex(scheduleStart, period, current);
+  return n === null ? addPeriod(current, period, 1) : addPeriod(scheduleStart, period, n + 1);
+}
