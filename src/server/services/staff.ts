@@ -1,7 +1,8 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
 import { RuleError, type ActionResult } from "@/lib/errors";
-import { fieldErrorsOf, staffSchema, type StaffInput } from "@/lib/validation/staff";
+import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { staffSchema, type StaffInput } from "@/lib/validation/staff";
 import { prisma } from "@/server/db";
 import { requireRole } from "@/server/auth/require-role";
 
