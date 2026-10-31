@@ -10,12 +10,15 @@ type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
 const INSTANT_INPUTS = new Set(["checkbox", "radio", "date"]);
 
-function asField(target: EventTarget): Field | null {
+/** A field's key is its name, or `data-field` for controls that are not submitted themselves. */
+function keyOf(target: EventTarget): { field: Field; key: string } | null {
   const isField =
     target instanceof HTMLInputElement ||
     target instanceof HTMLSelectElement ||
     target instanceof HTMLTextAreaElement;
-  return isField && target.name ? target : null;
+  if (!isField) return null;
+  const key = target.dataset.field ?? target.name;
+  return key ? { field: target, key } : null;
 }
 
 /** Choices and dates are finished the moment they change; text is finished on blur. */
@@ -47,20 +50,20 @@ export function useLiveValidation(schema: z.ZodType, options: Options = {}) {
   const formProps = {
     noValidate: true,
     onBlur(e: React.FocusEvent<HTMLFormElement>) {
-      const field = asField(e.target);
-      if (!field) return;
-      setShown((current) => new Set(current).add(field.name));
+      const hit = keyOf(e.target);
+      if (!hit) return;
+      setShown((current) => new Set(current).add(hit.key));
       validate(e.currentTarget);
     },
     onChange(e: React.ChangeEvent<HTMLFormElement>) {
-      const field = asField(e.target);
-      if (!field) return;
-      setEdited((current) => new Set(current).add(field.name));
-      if (isInstant(field)) setShown((current) => new Set(current).add(field.name));
+      const hit = keyOf(e.target);
+      if (!hit) return;
+      setEdited((current) => new Set(current).add(hit.key));
+      if (isInstant(hit.field)) setShown((current) => new Set(current).add(hit.key));
       validate(e.currentTarget);
     },
     onSubmit(e: React.FormEvent<HTMLFormElement>) {
-      setShown(new Set(Array.from(e.currentTarget.elements, (el) => asField(el)?.name).filter((n): n is string => !!n)));
+      setShown(new Set(Array.from(e.currentTarget.elements, (el) => keyOf(el)?.key).filter((k): k is string => !!k)));
       setEdited(new Set());
       if (!validate(e.currentTarget)) e.preventDefault();
     },
