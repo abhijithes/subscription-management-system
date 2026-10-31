@@ -1,10 +1,12 @@
 import { toMoney } from "@/lib/money";
 import type { ActionResult } from "@/lib/errors";
 import {
+  discountRuleSchema,
   planSchema,
   productSchema,
   taxSchema,
   variantSchema,
+  type DiscountRuleInput,
   type PlanInput,
   type ProductInput,
   type TaxInput,
@@ -166,4 +168,79 @@ export async function listTaxes() {
   await requireRole("ADMIN");
   const taxes = await prisma.tax.findMany({ orderBy: { name: "asc" } });
   return taxes.map((t) => ({ id: t.id, name: t.name, ratePercent: t.ratePercent.toFixed(2) }));
+}
+
+export async function createDiscountRule(
+  input: DiscountRuleInput,
+): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN");
+  if (denied) return denied;
+
+  const parsed = discountRuleSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+  const { value, minPurchase, productId, appliesTo, ...rest } = parsed.data;
+
+  if (appliesTo === "PRODUCT") {
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    if (!product) {
+      return { ok: false, fieldErrors: { productId: "Pick an existing product" }, message: "Product not found" };
+    }
+  }
+
+  const rule = await prisma.discountRule.create({
+    data: {
+      ...rest,
+      appliesTo,
+      productId: appliesTo === "PRODUCT" ? productId : null,
+      value: toMoney(value),
+      minPurchase: minPurchase === undefined ? null : toMoney(minPurchase),
+      minQuantity: rest.minQuantity ?? null,
+    },
+  });
+  return { ok: true, data: { id: rule.id } };
+}
+
+export async function listDiscountRules(page: number) {
+  await requireRole("ADMIN");
+  const current = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+
+  const [rows, total] = await Promise.all([
+    prisma.discountRule.findMany({
+      orderBy: { startsAt: "desc" },
+      skip: (current - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { product: { select: { name: true } } },
+    }),
+    prisma.discountRule.count(),
+  ]);
+
+  return {
+    page: current,
+    pageSize: PAGE_SIZE,
+    total,
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      value: r.value.toFixed(2),
+      minPurchase: r.minPurchase?.toFixed(2) ?? null,
+      minQuantity: r.minQuantity,
+      startsAt: r.startsAt.toISOString().slice(0, 10),
+      endsAt: r.endsAt.toISOString().slice(0, 10),
+      usageLimit: r.usageLimit,
+      usedCount: r.usedCount,
+      appliesTo: r.appliesTo,
+      productName: r.product?.name ?? null,
+    })),
+  };
+}
+
+/** Products to pick from when a discount rule targets one product. */
+export async function listProductOptions() {
+  await requireRole("ADMIN");
+  return prisma.product.findMany({
+    orderBy: { name: "asc" },
+    take: 500,
+    select: { id: true, name: true },
+  });
 }
