@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
+import { Pagination } from "@/components/pagination";
 import { RuleError } from "@/lib/errors";
 import { listProducts } from "@/server/services/catalog";
 
@@ -34,7 +35,6 @@ async function ProductList({ searchParams }: { searchParams: Promise<{ page?: st
     return <p className="text-sm text-zinc-400">No products yet. Create the first one.</p>;
   }
 
-  const pages = Math.ceil(data.total / data.pageSize);
   return (
     <>
       <div className="overflow-x-auto rounded-md border border-zinc-800">
@@ -63,13 +63,7 @@ async function ProductList({ searchParams }: { searchParams: Promise<{ page?: st
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between text-sm text-zinc-400">
-        <span>Page {data.page} of {pages} ({data.total} products)</span>
-        <span className="space-x-4">
-          {data.page > 1 && <Link href={`/products?page=${data.page - 1}`} className="underline">Previous</Link>}
-          {data.page < pages && <Link href={`/products?page=${data.page + 1}`} className="underline">Next</Link>}
-        </span>
-      </div>
+      <Pagination basePath="/products" page={data.page} pageSize={data.pageSize} total={data.total} noun="products" />
     </>
   );
 }
