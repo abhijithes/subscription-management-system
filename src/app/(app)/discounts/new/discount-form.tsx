@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { discountRuleSchema } from "@/lib/validation/catalog";
-import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { useLiveValidation } from "@/lib/validation/use-live-validation";
 import { createDiscountRuleAction } from "../actions";
 
 const inputClass = "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
@@ -19,19 +19,12 @@ function Field({ id, label, error, children }: { id: string; label: string; erro
 
 export function DiscountForm({ products }: { products: { id: string; name: string }[] }) {
   const [result, action, pending] = useActionState(createDiscountRuleAction, null);
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+  const { formProps, errorsWith } = useLiveValidation(discountRuleSchema);
+  const errors = errorsWith(result && !result.ok ? result.fieldErrors : undefined);
   const [appliesTo, setAppliesTo] = useState("SUBSCRIPTION");
-  const errors = { ...(result && !result.ok ? result.fieldErrors : {}), ...clientErrors };
-
-  function check(e: React.FormEvent<HTMLFormElement>) {
-    const parsed = discountRuleSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)));
-    if (parsed.success) return setClientErrors({});
-    e.preventDefault();
-    setClientErrors(fieldErrorsOf(parsed.error));
-  }
 
   return (
-    <form action={action} onSubmit={check} className="space-y-3">
+    <form action={action} {...formProps} className="space-y-3">
       <Field id="name" label="Name" error={errors.name}>
         <input id="name" name="name" className={inputClass} />
       </Field>

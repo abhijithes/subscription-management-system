@@ -1,26 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { taxSchema } from "@/lib/validation/catalog";
-import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { useLiveValidation } from "@/lib/validation/use-live-validation";
 import { createTaxAction } from "./actions";
 
 const inputClass = "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
 
 export function TaxForm() {
   const [result, action, pending] = useActionState(createTaxAction, null);
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
-  const errors = { ...(result && !result.ok ? result.fieldErrors : {}), ...clientErrors };
-
-  function check(e: React.FormEvent<HTMLFormElement>) {
-    const parsed = taxSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)));
-    if (parsed.success) return setClientErrors({});
-    e.preventDefault();
-    setClientErrors(fieldErrorsOf(parsed.error));
-  }
+  const { formProps, errorsWith } = useLiveValidation(taxSchema);
+  const errors = errorsWith(result && !result.ok ? result.fieldErrors : undefined);
 
   return (
-    <form action={action} onSubmit={check} className="max-w-sm space-y-3">
+    <form action={action} {...formProps} className="max-w-sm space-y-3">
       <div>
         <input name="name" placeholder="Name (for example GST)" className={inputClass} />
         {errors.name && <p className="mt-1 text-sm text-red-400">{errors.name}</p>}

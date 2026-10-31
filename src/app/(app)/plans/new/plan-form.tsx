@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { BILLING_PERIODS, planSchema } from "@/lib/validation/catalog";
-import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { useLiveValidation } from "@/lib/validation/use-live-validation";
 import { createPlanAction } from "../actions";
 
 const inputClass = "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
@@ -12,6 +12,11 @@ const options = [
   { name: "allowPause", label: "Allow pause" },
   { name: "allowRenew", label: "Allow renew" },
 ] as const;
+
+const planValues = (data: FormData) => ({
+  ...Object.fromEntries(data),
+  ...Object.fromEntries(options.map((o) => [o.name, data.get(o.name) === "on"])),
+});
 
 function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: React.ReactNode }) {
   return (
@@ -25,22 +30,11 @@ function Field({ id, label, error, children }: { id: string; label: string; erro
 
 export function PlanForm() {
   const [result, action, pending] = useActionState(createPlanAction, null);
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
-  const errors = { ...(result && !result.ok ? result.fieldErrors : {}), ...clientErrors };
-
-  function check(e: React.FormEvent<HTMLFormElement>) {
-    const data = new FormData(e.currentTarget);
-    const parsed = planSchema.safeParse({
-      ...Object.fromEntries(data),
-      ...Object.fromEntries(options.map((o) => [o.name, data.get(o.name) === "on"])),
-    });
-    if (parsed.success) return setClientErrors({});
-    e.preventDefault();
-    setClientErrors(fieldErrorsOf(parsed.error));
-  }
+  const { formProps, errorsWith } = useLiveValidation(planSchema, { values: planValues });
+  const errors = errorsWith(result && !result.ok ? result.fieldErrors : undefined);
 
   return (
-    <form action={action} onSubmit={check} className="space-y-3">
+    <form action={action} {...formProps} className="space-y-3">
       <Field id="name" label="Name" error={errors.name}>
         <input id="name" name="name" className={inputClass} />
       </Field>

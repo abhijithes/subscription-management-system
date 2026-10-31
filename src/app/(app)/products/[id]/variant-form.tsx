@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { useActionState } from "react";
+import { useLiveValidation } from "@/lib/validation/use-live-validation";
 import { variantSchema } from "@/lib/validation/catalog";
 import { addVariantAction } from "../actions";
 
@@ -14,18 +14,11 @@ const fields = [
 
 export function VariantForm({ productId }: { productId: string }) {
   const [result, action, pending] = useActionState(addVariantAction.bind(null, productId), null);
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
-  const errors = { ...(result && !result.ok ? result.fieldErrors : {}), ...clientErrors };
-
-  function check(e: React.FormEvent<HTMLFormElement>) {
-    const parsed = variantSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)));
-    if (parsed.success) return setClientErrors({});
-    e.preventDefault();
-    setClientErrors(fieldErrorsOf(parsed.error));
-  }
+  const { formProps, errorsWith } = useLiveValidation(variantSchema);
+  const errors = errorsWith(result && !result.ok ? result.fieldErrors : undefined);
 
   return (
-    <form action={action} onSubmit={check} className="max-w-sm space-y-3">
+    <form action={action} {...formProps} className="max-w-sm space-y-3">
       {fields.map((f) => (
         <div key={f.name}>
           <input name={f.name} placeholder={f.placeholder} inputMode={f.name === "extraPrice" ? "decimal" : undefined} className={inputClass} />
