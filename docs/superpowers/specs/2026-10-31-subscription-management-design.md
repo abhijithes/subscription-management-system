@@ -216,7 +216,7 @@ docs/                   spec, team rules
 
 ## 14. Team workflow
 
-See `docs/TEAM_RULES.md` for the working rules. In short: `main` is protected, `dev` is the integration branch, each member works on `feat/<area>` branches and opens PRs into `dev` under their own git identity. One owner per module. The schema is frozen after spec approval, and later changes are additive migrations through a PR all four see.
+See `docs/TEAM_RULES.md` for the working rules. In short: `main` is the only shared branch and the source of truth, and each member works on `feat/<area>` branches and opens PRs into `main` under their own git identity. One owner per module. The schema is frozen after spec approval, and later changes are additive migrations through a PR all four see.
 
 Module split:
 

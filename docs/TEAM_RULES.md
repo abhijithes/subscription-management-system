@@ -4,13 +4,13 @@ Read this before your first commit. The design lives in `docs/superpowers/specs/
 
 ## 1. Git
 
-- `main` is protected: demo-ready code only, merged from `dev` by the team leader.
-- `dev` is the integration branch. Nobody commits to `dev` directly.
-- Work on `feat/<area>-<short-name>` (for example `feat/catalog-plans`) or `fix/<short-name>`. Branch from the latest `dev`.
+- `main` is the only shared branch and the source of truth. Nobody commits to `main` directly, and it must always build.
+- Work on `feat/<area>-<short-name>` (for example `feat/catalog-plans`) or `fix/<short-name>`. Branch from the latest `main`.
 - Commit under your own git identity (`git config user.name` and `user.email`). Judges check that every member committed.
 - Small commits with clear messages: `feat(catalog): add plan form`, `fix(billing): skip paused subscriptions`. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
-- Open a PR into `dev`. At least one teammate reviews before it merges. Pull `dev` into your branch before opening the PR.
-- Never force-push to `dev` or `main`. Never commit `.env*` files, keys or database dumps.
+- Open a PR into `main`. At least one teammate reviews before it merges. Pull the latest `main` into your branch before opening the PR.
+- Never force-push to `main`. Never commit `.env*` files, keys or database dumps.
+- Do not add `CLAUDE.md` to any commit or PR.
 
 ## 2. Module ownership
 
@@ -78,12 +78,8 @@ A task is done when:
 3. `npx prisma migrate dev` then `npx prisma db seed`
 4. `npm run dev` and open http://localhost:3000
 
-## 8. Working with Claude Code
-
-`CLAUDE.md` in the repo root points Claude Code at these rules and the spec, so a teammate's session follows the same conventions. If you change a rule here, update `CLAUDE.md` in the same PR.
-
-## 9. Sync points
+## 8. Sync points
 
 - Start: freeze the schema and agree on the migration owner (first ~40 minutes).
-- Mid-build: merge all four modules into `dev`, run the billing flow end to end.
+- Mid-build: make sure all four modules are merged into `main`, run the billing flow end to end.
 - Before demo: seed the volume data, time the key pages against the 2-second target, run the smoke test of every scene in the brief.
