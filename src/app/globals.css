@@ -1,3 +1,6 @@
+/* Layer order: Tailwind utilities beat Mantine, Mantine beats Tailwind's reset. */
+@layer theme, base, mantine, components, utilities;
+
 @import "tailwindcss";
 
 :root {
