@@ -112,6 +112,15 @@ pnpm run dev
 | `MAIL_HOST`, `MAIL_USER`, `MAIL_PASS` | SMTP settings for reset links (if unset, the link is printed to the server console) |
 | `APP_URL` | App base URL used in reset links |
 
+## Clerk Password Policy
+
+The password rule (AUTH-03, BR-02) is set in two places and both must match:
+
+- **Clerk dashboard** (Configure, then User & authentication, then Password): turn on "Require a minimum password length" and set it to 9, and turn on "Require lowercase", "Require uppercase" and "Require special characters". Turn on "Reject compromised passwords" if you want it.
+- **In code**: `validatePassword()` in `src/lib/password.ts` checks the same rule on our `/forgot-password` page, and will on staff creation.
+
+The reset email is Clerk's own. Users start at `/forgot-password`, enter their email, then the emailed code, then a new password.
+
 ## Demo Accounts
 
 Created by the seed script.
