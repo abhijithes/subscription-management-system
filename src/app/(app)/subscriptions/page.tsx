@@ -74,7 +74,9 @@ async function SubscriptionList({ searchParams }: { searchParams: Search }) {
               <tbody className="divide-y divide-zinc-800">
                 {data.rows.map((s) => (
                   <tr key={s.id}>
-                    <td className="px-4 py-2 font-mono">{s.number}</td>
+                    <td className="px-4 py-2 font-mono">
+                      <Link href={`/subscriptions/${s.id}`} className="underline">{s.number}</Link>
+                    </td>
                     <td className="px-4 py-2">
                       {s.customerName} <span className="text-zinc-400">{s.customerEmail}</span>
                     </td>

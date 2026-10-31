@@ -8,6 +8,11 @@ export function canTransition(from: SubscriptionStatus, to: SubscriptionStatus):
   return SUBSCRIPTION_ORDER.indexOf(to) === SUBSCRIPTION_ORDER.indexOf(from) + 1;
 }
 
+/** The status after `from` in the lifecycle, or null at the end. */
+export function nextStatus(from: SubscriptionStatus): SubscriptionStatus | null {
+  return SUBSCRIPTION_ORDER[SUBSCRIPTION_ORDER.indexOf(from) + 1] ?? null;
+}
+
 type PlanFlags = { allowPause: boolean; allowEarlyClose: boolean; allowRenew: boolean };
 
 const FLAG_FOR_ACTION = {

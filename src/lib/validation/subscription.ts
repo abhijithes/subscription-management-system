@@ -83,3 +83,5 @@ export function subscriptionSchemaFor(plans: { id: string; minQuantity: number }
 export type FromTemplateInput = z.input<typeof fromTemplateSchema>;
 export type SubscriptionInput = z.input<typeof fromScratchSchema>;
 export type TemplateDates = Pick<FromTemplateInput, "startDate" | "expiryDate" | "paymentTermsDays">;
+
+export const subscriptionStatusSchema = z.enum(["DRAFT", "QUOTATION", "CONFIRMED", "ACTIVE", "CLOSED"], "Unknown status");
