@@ -26,6 +26,18 @@
 - Out of scope: invoice cancel and partial payments.
 - Git: `main` is the source of truth. Commits are local. Never push, and never change anything on the remote, without the user's explicit permission. Never commit `.env*`. Never add `CLAUDE.md` to a commit or PR.
 
+## Status and deviations (updated 2026-10-31)
+
+- **Done on `main`:** pnpm setup, and the Clerk skeleton (first part of Task 4): sign-in and sign-up pages, `ClerkProvider`, route protection.
+- **Foundation (`feat/foundation`):** Prisma schema (Task 3), database client, and the rule library in `src/lib/` (Task 2).
+- **Tests are deferred to the end.** Vitest tooling (Task 1) and every `.test.ts` and integration test in the tasks below are built last, after the features work. Until then the rule library and services are verified by `pnpm run typecheck` and `pnpm run lint` only. The "Review Focus" tests still have to be written then.
+- **Prisma 7 differences from the task text:**
+  - The client is generated into `src/generated/prisma` (git-ignored, built by the `postinstall` script). Import enums from `@/generated/prisma/enums` and `Decimal` from `@prisma/client/runtime/client`, not from `@prisma/client`.
+  - The database URL is in `prisma.config.ts`, not in `schema.prisma`. The client needs the `@prisma/adapter-pg` driver adapter (see `src/server/db.ts`).
+  - Pin `prisma` and `@prisma/client` to `^7.10.1`. The unpinned `prisma` package resolves to an 8.0 release candidate.
+- **Next 16:** `middleware.ts` is deprecated and renamed to `proxy.ts`, and it must sit beside the `app` folder, so `src/proxy.ts`. The current root-level `middleware.ts` probably does not run.
+- **Typecheck on a fresh clone** fails until `pnpm exec next typegen` has generated the global route types once.
+
 ## Review Focus
 
 Inputs the spec implies but does not spell out. Each has a test in the task named in brackets.

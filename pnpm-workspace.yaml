@@ -1,5 +1,7 @@
 allowBuilds:
   '@clerk/shared': false
+  '@prisma/engines': true
+  prisma: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - '@clerk/backend@3.26.5'
