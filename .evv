@@ -1,0 +1,18 @@
+# Supabase Postgres (pooled connection for the app, direct connection for migrations)
+DATABASE_URL=postgresql://postgres.eypjvtvflysoiziqxodu:RUqJjwyxKy33OS@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+DIRECT_URL=postgresql://postgres.eypjvtvflysoiziqxodu:RUqJjwyxKy33OS@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xhc3NpYy1kaW5nby0xMDYuY2xlcmsuYWNjb3VudHMuZGV2JA
+CLERK_SECRET_KEY=sk_test_1L6qSrQyzY4kMEknvHRR6yQS2YKL97GrpW2pWalCQA
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+
+# Email (optional: without a key, emails are printed to the server console)
+RESEND_API_KEY=
+
+# Protects the scheduled billing route
+BILLING_CRON_SECRET=
+
+# App base URL used in links
+APP_URL=http://localhost:3000
