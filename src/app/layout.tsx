@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider, UserButton } from "@clerk/nextjs";
+import { ColorSchemeScript } from "@mantine/core";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,14 +23,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <ColorSchemeScript defaultColorScheme="auto" />
+      </head>
       <ClerkProvider>
         <body className="min-h-full flex flex-col">
-          {/* Temporary sign-out until the app shell (#7) has a user menu. */}
-          <div className="fixed right-4 top-4 z-50">
-            <UserButton />
-          </div>
           {children}
         </body>
       </ClerkProvider>
