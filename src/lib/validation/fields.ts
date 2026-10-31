@@ -10,10 +10,12 @@ export const money = z
 export const isoDate = z
   .string()
   .trim()
-  .refine(
-    (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v),
-    "Pick a valid date",
-  )
+  .refine((v) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const parsed = new Date(`${v}T00:00:00Z`);
+    // 2026-02-31 parses to an invalid Date, whose toISOString() would throw.
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(v);
+  }, "Pick a valid date")
   .transform((v) => new Date(`${v}T00:00:00Z`));
 
 export const wholeNumber = (min: number, max: number, label: string) =>
