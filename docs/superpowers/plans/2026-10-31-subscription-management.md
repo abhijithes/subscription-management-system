@@ -65,9 +65,9 @@ tests/integration/   real-Postgres tests
 **Interfaces:**
 - Produces: scripts `test` (unit, `src/**/*.test.ts`), `test:integration` (`tests/integration/**/*.test.ts`, runs against `TEST_DATABASE_URL`), `db:seed`.
 
-- [ ] **Step 1:** Install `prisma`, `@prisma/client`, `zod`, `@clerk/nextjs`, `resend` and dev `vitest`, `tsx`. Run `npm install`, then read the Next docs named in Global Constraints.
+- [ ] **Step 1:** Run `pnpm add prisma@^7.10.1 @prisma/client@^7.10.1 @prisma/adapter-pg pg zod @clerk/nextjs resend` and `pnpm add -D vitest tsx dotenv @types/pg @types/node@^22`, then read the Next docs named in Global Constraints.
 - [ ] **Step 2:** Create `vitest.config.ts` with two projects (unit, integration) and add the scripts. Create `.env.example` listing every env var above plus `TEST_DATABASE_URL`.
-- [ ] **Step 3:** Run `npm run test -- --passWithNoTests && npm run typecheck && npm run lint`. Expected: all exit 0.
+- [ ] **Step 3:** Run `pnpm run test --passWithNoTests && pnpm run typecheck && pnpm run lint`. Expected: all exit 0.
 - [ ] **Step 4:** Commit locally: `chore: add test tooling and env example`.
 
 ### Task 2: Pure rule library
@@ -92,9 +92,9 @@ tests/integration/   real-Postgres tests
   - `period.test.ts`: MONTHLY from `2026-01-31`: n=1 gives `2026-02-28`, n=2 gives `2026-03-31`; a leap year gives `2028-02-29`; DAILY n=3, WEEKLY n=2, YEARLY n=1 from `2028-02-29` gives `2029-02-28` (Review Focus 1).
   - `password.test.ts`: `Abcdefg1!` (9 chars) is valid; `Abcdef1!` (8) fails length; each of missing uppercase, lowercase and special character yields a message.
   - `money.test.ts`: `round2('1.005')` is `1.01`; `sumMoney([])` is `0`.
-- [ ] **Step 2:** Run `npm run test`. Expected: FAIL, modules not found.
+- [ ] **Step 2:** Run `pnpm run test`. Expected: FAIL, modules not found.
 - [ ] **Step 3:** Implement the signatures above. Allocate a subscription-level discount across lines proportionally, putting the rounding remainder on the last line. Clamp total discount to the subtotal.
-- [ ] **Step 4:** Run `npm run test`. Expected: PASS.
+- [ ] **Step 4:** Run `pnpm run test`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(lib): add money, pricing, discount, status, period and password rules`.
 
 ### Task 3: Prisma schema and database client
@@ -108,9 +108,9 @@ tests/integration/   real-Postgres tests
 - Produces: models and enums exactly as spec section 4 (User, Product, ProductVariant, Plan, Tax, DiscountRule, QuotationTemplate, TemplateLine, Subscription, SubscriptionLine, Invoice, InvoiceLine, InvoiceDiscount, Payment), with the indexes listed there; `export const prisma: PrismaClient` from `src/server/db.ts`; a `resetDb(): Promise<void>` helper in `tests/integration/setup.ts`.
 
 - [ ] **Step 1: Write the failing test** in `schema.test.ts`: creating two users with the same email rejects; two invoices with the same `(subscriptionId, periodStart, revision)` reject; the same pair with `revision: 2` succeeds; a subscription `number` duplicate rejects.
-- [ ] **Step 2:** Run `npm run test:integration`. Expected: FAIL, no schema.
-- [ ] **Step 3:** Write `schema.prisma` with `decimal(12,2)` money fields, then run `npx prisma migrate dev --name init` against the test database. Use `DIRECT_URL` for migrations. Add the singleton client with the usual dev hot-reload guard.
-- [ ] **Step 4:** Run `npm run test:integration`. Expected: PASS.
+- [ ] **Step 2:** Run `pnpm run test:integration`. Expected: FAIL, no schema.
+- [ ] **Step 3:** Write `schema.prisma` with `decimal(12,2)` money fields, then run `pnpm exec prisma migrate dev --name init` against the test database. Use `DIRECT_URL` for migrations. Add the singleton client with the usual dev hot-reload guard.
+- [ ] **Step 4:** Run `pnpm run test:integration`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(db): add Prisma schema, initial migration and client`.
 
 ### Task 4: Authentication and roles
@@ -124,9 +124,9 @@ tests/integration/   real-Postgres tests
 - Produces: `getCurrentUser(): Promise<User|null>` (upserts a CUSTOMER row by `clerkUserId`, lowercasing the email); `requireRole(...roles: Role[]): Promise<User>` (redirects signed-out users, throws `RuleError('FORBIDDEN')` for the wrong role); `createStaff(input: { email: string; name: string; password: string }): Promise<ActionResult<{ userId: string }>>` (ADMIN only, calls Clerk's backend API, then inserts a STAFF row); `homePathFor(role: Role): string`.
 
 - [ ] **Step 1: Write the failing tests** in `auth.test.ts` (Clerk calls mocked): first call for a new Clerk user creates a CUSTOMER; a second Clerk user whose email differs only by case maps to the same row (Review Focus 4); `requireRole('ADMIN')` throws `FORBIDDEN` for STAFF; `createStaff` by a STAFF user returns `ok: false`; `createStaff` with `weakpass` returns a field error on `password`; `homePathFor` returns `/dashboard` for ADMIN and STAFF and `/portal` for CUSTOMER.
-- [ ] **Step 2:** Run `npm run test:integration -- auth`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration auth`. Expected: FAIL.
 - [ ] **Step 3:** Implement the signatures. Configure Clerk password rules in the dashboard per spec section 8 and list them in the README.
-- [ ] **Step 4:** Run `npm run test:integration -- auth`. Expected: PASS. Then run `npm run dev` and confirm sign-up, sign-in and the reset email work in a browser.
+- [ ] **Step 4:** Run `pnpm run test:integration auth`. Expected: PASS. Then run `pnpm run dev` and confirm sign-up, sign-in and the reset email work in a browser.
 - [ ] **Step 5:** Commit locally: `feat(auth): add Clerk auth, role guard and staff creation`.
 
 ### Task 5: App shell and navigation
@@ -140,9 +140,9 @@ tests/integration/   real-Postgres tests
 - Produces: `navFor(role: Role): { label: string; href: string }[]` (routes per the spec section 7 table); `<DataTable>` accepting `columns`, `rows`, `page`, `pageSize` (25) and `total`.
 
 - [ ] **Step 1: Write the failing test** in `nav.test.ts`: ADMIN's list contains `/products` and `/team`; STAFF's contains `/subscriptions` but neither `/products` nor `/team`; CUSTOMER's contains only `/portal` and `/portal/invoices`.
-- [ ] **Step 2:** Run `npm run test -- nav`. Expected: FAIL.
-- [ ] **Step 3:** Implement `navFor`, run `npx shadcn@latest init` (confirm Tailwind 4 support in its docs first), and build the sidebar shell. It collapses to a menu on phone width, with no horizontal page scroll.
-- [ ] **Step 4:** Run `npm run test -- nav && npm run typecheck`. Expected: PASS. Check the shell at phone width in a browser.
+- [ ] **Step 2:** Run `pnpm run test nav`. Expected: FAIL.
+- [ ] **Step 3:** Implement `navFor`, run `pnpm dlx shadcn@latest init` (confirm Tailwind 4 support in its docs first), and build the sidebar shell. It collapses to a menu on phone width, with no horizontal page scroll.
+- [ ] **Step 4:** Run `pnpm run test nav && pnpm run typecheck`. Expected: PASS. Check the shell at phone width in a browser.
 - [ ] **Step 5:** Commit locally: `feat(ui): add role-based app shell and navigation`.
 
 ### Task 6: Catalog (products, variants, plans, taxes, discounts)
@@ -155,9 +155,9 @@ tests/integration/   real-Postgres tests
 - Produces (all ADMIN only; each takes the input type from the matching Zod schema and returns `ActionResult<{ id: string }>`): `createProduct`, `addVariant(productId: string, input)`, `createPlan`, `createTax`, `createDiscountRule`; plus `listProducts(page: number)`, `listPlans(page: number)`, `listTaxes()`, `listDiscountRules(page: number)`.
 
 - [ ] **Step 1: Write the failing tests:** each create function returns `ok: false` for a STAFF caller; a variant with attribute `Brand`, value `Odoo`, `extraPrice` `560` persists; a plan with `minQuantity` 0 or an `availableTo` before `availableFrom` returns field errors; a PERCENT rule with `value` above 100 or `endsAt` before `startsAt` returns field errors; a PRODUCT rule without `productId` returns a field error.
-- [ ] **Step 2:** Run `npm run test:integration -- catalog`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration catalog`. Expected: FAIL.
 - [ ] **Step 3:** Implement the Zod schemas, services and pages. Lists use server pagination, with empty and loading states.
-- [ ] **Step 4:** Run `npm run test:integration -- catalog`. Expected: PASS. Check each form in the browser.
+- [ ] **Step 4:** Run `pnpm run test:integration catalog`. Expected: PASS. Check each form in the browser.
 - [ ] **Step 5:** Commit locally: `feat(catalog): add products, variants, plans, taxes and discount rules`.
 
 ### Task 7: Quotation templates and subscriptions
@@ -170,9 +170,9 @@ tests/integration/   real-Postgres tests
 - Produces (ADMIN or STAFF): `createTemplate(input): ActionResult<{ id }>`; `createSubscriptionFromTemplate(templateId: string, customerId: string, input: { startDate: Date; expiryDate: Date; paymentTermsDays: number }): ActionResult<{ id; number }>`; `createSubscription(input)` (from scratch); `advanceStatus(subscriptionId: string, to: SubscriptionStatus): ActionResult<{ status }>` (setting ACTIVE sets `nextBillingDate = startDate`); `pauseSubscription(id)`, `resumeSubscription(id)` (sets `nextBillingDate` to today), `closeSubscription(id)`, `renewSubscription(id)` (extends `expiryDate` by `expiryDate - startDate`); `listSubscriptions(filters: { status?: SubscriptionStatus; q?: string; page: number })`.
 
 - [ ] **Step 1: Write the failing tests:** numbers are unique and sequential across two creations; a line with quantity below the plan's `minQuantity` returns a field error (BR-09); `advanceStatus` DRAFT to ACTIVE returns `ok: false` and DRAFT to QUOTATION succeeds; a template's `quotationExpiresAt` is `validityDays` after creation; `pauseSubscription` on a plan with `allowPause: false` returns `ok: false`; resume sets `nextBillingDate` to today and `isPaused` false; `renewSubscription` extends `expiryDate` by the original duration and keeps the number; line `unitPrice` is recalculated server-side whatever the input says (BR-06).
-- [ ] **Step 2:** Run `npm run test:integration -- subscriptions`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration subscriptions`. Expected: FAIL.
 - [ ] **Step 3:** Implement the services and pages. `/subscriptions/[id]` shows a status stepper and only the actions the plan allows. Staff and admin can see every subscription's status.
-- [ ] **Step 4:** Run `npm run test:integration -- subscriptions`. Expected: PASS.
+- [ ] **Step 4:** Run `pnpm run test:integration subscriptions`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(subscriptions): add templates, lifecycle, pause, renew and close`.
 
 ### Task 8: Billing run
@@ -194,9 +194,9 @@ tests/integration/   real-Postgres tests
   - A subscription with no lines is returned in `failed` with a reason and creates no invoice (Review Focus 3).
   - One failing subscription does not stop the others, and is reported once even with `limit: 1`.
   - A route call without the secret header returns 401.
-- [ ] **Step 2:** Run `npm run test:integration -- billing`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration billing`. Expected: FAIL.
 - [ ] **Step 3:** Implement `runBilling` per spec section 5: each subscription in its own transaction, `SELECT ... FOR UPDATE SKIP LOCKED` via raw SQL, re-check `nextBillingDate`, skip if any revision exists for the period, insert with `ON CONFLICT DO NOTHING`, snapshot lines, then apply the discount claim with the conditional `UPDATE ... WHERE usedCount < usageLimit` and fall back to the next ranked rule on zero rows.
-- [ ] **Step 4:** Run `npm run test:integration -- billing`. Expected: PASS. The `/billing` page loops calling the action with `nextCursor` until it is null and shows created, skipped and failed.
+- [ ] **Step 4:** Run `pnpm run test:integration billing`. Expected: PASS. The `/billing` page loops calling the action with `nextCursor` until it is null and shows created, skipped and failed.
 - [ ] **Step 5:** Commit locally: `feat(billing): add idempotent billing run`.
 
 ### Task 9: Invoices and payments
@@ -209,9 +209,9 @@ tests/integration/   real-Postgres tests
 - Produces (ADMIN or STAFF): `listInvoices(filters: { status?: InvoiceStatus; overdue?: boolean; customerId?: string; page: number })`; `getInvoice(id: string)`; `confirmInvoice(id: string): ActionResult<{ status }>` (DRAFT to CONFIRMED only); `sendInvoice(id: string): ActionResult<{}>` (uses `sendEmail`, console fallback); `recordPayment(input: { invoiceId: string; method: string; amount: string; paidAt: Date; note?: string }): ActionResult<{ paymentId: string }>`; `sendEmail(msg: { to: string; subject: string; html: string }): Promise<void>`.
 
 - [ ] **Step 1: Write the failing tests:** `confirmInvoice` on a PAID invoice returns `ok: false`; `recordPayment` on a DRAFT invoice returns `ok: false`; a payment equal to the total moves the invoice to PAID, and `'100.1'` equals a total of `100.10` (Review Focus 5); `'99.99'` against `100.10` returns a field error on `amount` and leaves the status CONFIRMED; `overdue: true` returns only invoices with `dueDate` before today and status not PAID, and an invoice due today is not overdue (BR-10); `sendInvoice` without `RESEND_API_KEY` resolves and writes the message to the console.
-- [ ] **Step 2:** Run `npm run test:integration -- invoices`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration invoices`. Expected: FAIL.
 - [ ] **Step 3:** Implement the services and pages. `/invoices/[id]/print` is a clean HTML page with `@media print` styles. Payments list shows method, amount, date and note.
-- [ ] **Step 4:** Run `npm run test:integration -- invoices`. Expected: PASS.
+- [ ] **Step 4:** Run `pnpm run test:integration invoices`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(invoices): add confirm, send, print and payments`.
 
 ### Task 10: Customer portal
@@ -224,9 +224,9 @@ tests/integration/   real-Postgres tests
 - Produces: `listMySubscriptions(user: User, page: number)`; `listMyInvoices(user: User, page: number)`; `getMyInvoice(user: User, id: string): Promise<Invoice>` (throws `RuleError('NOT_FOUND')` for another customer's id).
 
 - [ ] **Step 1: Write the failing tests:** customer A's lists contain none of customer B's rows; `getMyInvoice(A, invoiceOfB)` throws `NOT_FOUND`; an unknown id throws the same error; a STAFF caller of the portal pages is redirected.
-- [ ] **Step 2:** Run `npm run test:integration -- portal`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration portal`. Expected: FAIL.
 - [ ] **Step 3:** Implement the services with `customerId = user.id` inside every query. Pages map `NOT_FOUND` to the 404 page.
-- [ ] **Step 4:** Run `npm run test:integration -- portal`. Expected: PASS.
+- [ ] **Step 4:** Run `pnpm run test:integration portal`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(portal): add customer portal with scoped queries`.
 
 ### Task 11: Finance dashboard
@@ -239,9 +239,9 @@ tests/integration/   real-Postgres tests
 - Produces: `type DashboardData = { activeSubscriptions: number; revenueReceived: Decimal; outstanding: Decimal; overdueCount: number; overdueInvoices: InvoiceRow[]; recentPayments: PaymentRow[] }`; `getDashboard(filters: { from?: Date; to?: Date; planId?: string; customerId?: string }): Promise<DashboardData>`.
 
 - [ ] **Step 1: Write the failing test** with a fixed fixture of 3 active and 1 closed subscription, invoices of 100 (PAID), 200 (CONFIRMED, overdue) and 50 (CONFIRMED, due tomorrow), and one payment of 100: `activeSubscriptions` 3, `revenueReceived` 100, `outstanding` 250, `overdueCount` 1; filtering by `planId` changes the numbers to that plan's rows; `from` after the payment date gives `revenueReceived` 0.
-- [ ] **Step 2:** Run `npm run test:integration -- dashboard`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration dashboard`. Expected: FAIL.
 - [ ] **Step 3:** Implement with SQL aggregates, not row loading. The page shows the four tiles, the overdue table and recent payments, with filters as URL params.
-- [ ] **Step 4:** Run `npm run test:integration -- dashboard`. Expected: PASS.
+- [ ] **Step 4:** Run `pnpm run test:integration dashboard`. Expected: PASS.
 - [ ] **Step 5:** Commit locally: `feat(dashboard): add finance dashboard`.
 
 ### Task 12: Seed data and performance check
@@ -252,12 +252,12 @@ tests/integration/   real-Postgres tests
 
 **Interfaces:**
 - Consumes: all services and the schema.
-- Produces: `npm run db:seed` (admin, staff, customers, Odoo +560 variant, all four plan periods, taxes, one discount rule) and `npm run db:seed:volume` (adds 5,000+ subscriptions with invoices and payments, reproducible from a fixed random seed).
+- Produces: `pnpm run db:seed` (admin, staff, customers, Odoo +560 variant, all four plan periods, taxes, one discount rule) and `pnpm run db:seed:volume` (adds 5,000+ subscriptions with invoices and payments, reproducible from a fixed random seed).
 
 - [ ] **Step 1: Write the failing test** in `tests/integration/seed.test.ts`: after seeding, the Odoo variant has `extraPrice` 560, all four billing periods exist, and re-running the seed does not duplicate users.
-- [ ] **Step 2:** Run `npm run test:integration -- seed`. Expected: FAIL.
+- [ ] **Step 2:** Run `pnpm run test:integration seed`. Expected: FAIL.
 - [ ] **Step 3:** Implement the seed and the timing script. The script requests `/dashboard`, `/subscriptions`, `/invoices` and `/portal/invoices` with a signed-in session and prints each time.
-- [ ] **Step 4:** Run `npm run db:seed:volume` then `npx tsx scripts/time-pages.ts`. Expected: every page under 2000 ms. If one is over, add the missing index and note it in the commit.
+- [ ] **Step 4:** Run `pnpm run db:seed:volume` then `pnpm exec tsx scripts/time-pages.ts`. Expected: every page under 2000 ms. If one is over, add the missing index and note it in the commit.
 - [ ] **Step 5:** Commit locally: `feat(seed): add seed data, volume mode and page timing script`.
 
 ### Task 13: Docs alignment and smoke test
@@ -267,6 +267,6 @@ tests/integration/   real-Postgres tests
 
 - [ ] **Step 1:** Update the README tech stack, env table and architecture notes to match the spec (Clerk, Supabase, Zod, Vitest; remove JWT, class-validator, Docker Compose, and invoice cancel from features).
 - [ ] **Step 2:** Confirm `docs/TEAM_RULES.md` and the spec describe `main` as the only shared branch (feature branches, PR into `main`) and no longer mention `dev` or `CLAUDE.md`.
-- [ ] **Step 3:** Run `npm run lint && npm run typecheck && npm run test && npm run test:integration && npm run build`. Expected: all exit 0.
+- [ ] **Step 3:** Run `pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:integration && pnpm run build`. Expected: all exit 0.
 - [ ] **Step 4:** Walk each scene in the brief in a browser in order: sign-up and reset, plan launch, quote to subscription, billing day, discount, payment, dashboard. Record anything failing as a new task.
 - [ ] **Step 5:** Commit locally: `docs: align README and team rules with the spec`.

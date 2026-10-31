@@ -36,7 +36,7 @@ These affect everyone. Change them only through a PR that all four teammates see
 
 - The schema is frozen once the spec is approved.
 - After that, only additive changes (new columns or tables), as a new migration. Never edit a migration that is already merged.
-- Run `npx prisma migrate dev --name <what-changed>` locally, commit the generated migration, and tell the team.
+- Run `pnpm exec prisma migrate dev --name <what-changed>` locally, commit the generated migration, and tell the team.
 - Only one person applies migrations to the shared Supabase project, to avoid conflicts. Agree who at the first sync.
 
 ## 4. Code rules (these enforce the business rules)
@@ -66,17 +66,17 @@ These affect everyone. Change them only through a PR that all four teammates see
 A task is done when:
 
 - It works for the roles it applies to, and a role that must not use it is refused on the server.
-- Rule logic has unit tests (`npm test` passes). Billing, discount-usage and customer-isolation changes have integration tests.
-- `npm run lint` and `npx tsc --noEmit` pass.
+- Rule logic has unit tests (`pnpm test` passes). Billing, discount-usage and customer-isolation changes have integration tests.
+- `pnpm run lint` and `pnpm exec tsc --noEmit` pass.
 - No secrets or debug logging are committed.
 - The PR description says what changed and how you checked it.
 
 ## 7. Local setup
 
-1. `npm install`
+1. `pnpm install`
 2. Copy `.env.example` to `.env.local` and fill in the shared Supabase and Clerk values (ask the team leader, never commit them).
-3. `npx prisma migrate dev` then `npx prisma db seed`
-4. `npm run dev` and open http://localhost:3000
+3. `pnpm exec prisma migrate dev` then `pnpm exec prisma db seed`
+4. `pnpm run dev` and open http://localhost:3000
 
 ## 8. Sync points
 

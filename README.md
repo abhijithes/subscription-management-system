@@ -92,10 +92,10 @@ git clone <repo-url>
 cd <repo-folder>
 
 # 2. Install
-npm install
+pnpm install
 
 # 3. Run
-npm run dev
+pnpm run dev
 ```
 
 - App: http://localhost:3000
