@@ -1,6 +1,6 @@
 /**
  * Seed data for Brightloop. `pnpm run db:seed` is safe to re-run (it finds or creates by name and
- * email). `pnpm run db:seed:volume` also adds 50 subscriptions with invoices and payments from
+ * email). `pnpm run db:seed:volume` also adds 50 subscriptions, each with one invoice (and a payment if paid), so no table passes 50 rows from
  * a fixed random seed, so timings are comparable run to run. It writes to whatever DATABASE_URL
  * points at, so check that first.
  *
@@ -149,7 +149,7 @@ async function seedVolume(base: Awaited<ReturnType<typeof seedCatalog>>, count: 
 
     const net = quantity * unitPrice;
     const tax = Math.round(net * 18) / 100;
-    for (let n = 0; n < 1 + Math.floor(rand() * 3); n++) {
+    for (let n = 0; n < 1; n++) {
       const periodStart = new Date(startDate.getTime() + n * 30 * DAY);
       const invoiceDate = new Date(periodStart.getTime() + 30 * DAY);
       const roll = rand();
@@ -157,7 +157,7 @@ async function seedVolume(base: Awaited<ReturnType<typeof seedCatalog>>, count: 
       const invoiceId = randomUUID();
       invoices.push({
         id: invoiceId,
-        number: `INV-${String(90001 + i * 3 + n).padStart(5, "0")}`,
+        number: `INV-${String(90001 + i).padStart(5, "0")}`,
         subscriptionId: id,
         customerId: customer.id,
         periodStart,
