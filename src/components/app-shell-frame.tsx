@@ -20,6 +20,13 @@ export function AppShellFrame({ groups, user, year, children }: Props) {
   const pathname = usePathname();
   const [opened, { toggle, close }] = useDisclosure(false);
 
+  // The current page is the most specific link that matches: /portal/invoices lights up Invoices,
+  // not Subscriptions too, even though /portal is a prefix of it.
+  const activeHref = groups
+    .flatMap((group) => group.links)
+    .filter((link) => pathname === link.href || pathname.startsWith(`${link.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
   // A phone's drawer closes once you have gone somewhere.
   useEffect(() => close(), [pathname, close]);
 
@@ -56,8 +63,8 @@ export function AppShellFrame({ groups, user, year, children }: Props) {
                     component={Link}
                     href={link.href}
                     label={link.label}
-                    active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
-                    aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                    active={link.href === activeHref}
+                    aria-current={link.href === activeHref ? "page" : undefined}
                   />
                 ))}
               </Stack>

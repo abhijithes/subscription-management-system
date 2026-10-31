@@ -15,10 +15,11 @@ async function customer(): Promise<User> {
   return requireRole("CUSTOMER");
 }
 
+/** Customers never see draft subscriptions either: they appear once staff send a quotation. */
 export async function listMySubscriptions(page: number) {
   const user = await customer();
   const current = pageOf(page);
-  const where = { customerId: user.id };
+  const where = { customerId: user.id, status: { not: "DRAFT" as const } };
   const [rows, total] = await Promise.all([
     prisma.subscription.findMany({
       where,
@@ -105,6 +106,7 @@ export async function getMyInvoice(id: string) {
     taxTotal: money(invoice.taxTotal),
     total: money(invoice.total),
     amountPaid: money(sumMoney(invoice.payments.map((p) => p.amount))),
+    payments: invoice.payments.map((p) => ({ id: p.id, method: p.method, amount: money(p.amount), paidAt: day(p.paidAt) })),
     lines: invoice.lines.map((l) => ({
       id: l.id,
       description: l.description,
