@@ -1,97 +1,121 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BillingFailure } from "@/server/services/billing";
+import { Button, Group, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { AppAnchor } from "@/components/app-anchor";
+import { emptyTotals, runChunks, type Outcome, type Totals } from "@/lib/billing-loop";
 import { runBillingAction } from "./actions";
 
 const SHOWN_FAILURES = 100;
+const numeric = { fontVariantNumeric: "tabular-nums" } as const;
+const count = (n: number) => n.toLocaleString("en-US");
 
-type Totals = { created: number; skipped: number; chunks: number; failed: BillingFailure[] };
+type Phase = "idle" | "running" | "stopping";
 
 export function BillingRunner({ due }: { due: number }) {
   const router = useRouter();
-  const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [outcome, setOutcome] = useState<Outcome["status"] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [finished, setFinished] = useState(false);
+  const stopRequested = useRef(false);
+  const running = phase !== "idle";
 
   async function run() {
     if (!confirm(`Create invoices for ${due} due subscription${due === 1 ? "" : "s"}?`)) return;
-    setRunning(true);
-    setFinished(false);
+    stopRequested.current = false;
+    setPhase("running");
+    setOutcome(null);
     setError(null);
-    let totalsSoFar: Totals = { created: 0, skipped: 0, chunks: 0, failed: [] };
-    setTotals(totalsSoFar);
+    setTotals(emptyTotals());
 
-    let cursor: string | null = null;
-    do {
-      const result = await runBillingAction(cursor);
-      if (!result.ok) {
-        setError(result.message);
-        break;
-      }
-      totalsSoFar = {
-        created: totalsSoFar.created + result.data.created,
-        skipped: totalsSoFar.skipped + result.data.skipped,
-        chunks: totalsSoFar.chunks + 1,
-        failed: [...totalsSoFar.failed, ...result.data.failed],
-      };
-      setTotals(totalsSoFar);
-      cursor = result.data.nextCursor;
-      if (!cursor) setFinished(true);
-    } while (cursor);
-
-    setRunning(false);
-    router.refresh();
+    const result = await runChunks({
+      runChunk: runBillingAction,
+      shouldStop: () => stopRequested.current,
+      onProgress: setTotals,
+    });
+    setTotals(result.totals);
+    setOutcome(result.status);
+    setError(result.error ?? null);
+    setPhase("idle");
+    router.refresh(); // the due count above catches up with what was billed
   }
 
-  return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <p className="text-sm">
-          <span className="text-2xl font-semibold">{due}</span>{" "}
-          <span className="text-zinc-400">subscription{due === 1 ? "" : "s"} due for billing today</span>
-        </p>
-        <button
-          onClick={run}
-          disabled={running || due === 0}
-          className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
-        >
-          {running ? "Running..." : "Run billing"}
-        </button>
-        {due === 0 && !totals && <p className="text-sm text-zinc-400">Nothing is due.</p>}
-      </section>
+  function stop() {
+    stopRequested.current = true;
+    setPhase("stopping");
+  }
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+  const heading = phase === "running" ? "In progress" : phase === "stopping" ? "Stopping" : outcome === "finished" ? "Run complete" : outcome === "stopped" ? "Run stopped" : "Run stopped by an error";
+
+  return (
+    <Stack gap="xl">
+      <Stack gap="sm">
+        <Text>
+          <Text span fz="1.75rem" fw={600} style={numeric}>{count(due)}</Text>{" "}
+          <Text span c="dimmed">subscription{due === 1 ? "" : "s"} due for billing today</Text>
+        </Text>
+        <Group gap="sm">
+          <Button onClick={run} disabled={running || due === 0} loading={phase === "running"}>
+            Run billing
+          </Button>
+          {running && (
+            <Button variant="default" color="red" onClick={stop} disabled={phase === "stopping"}>
+              {phase === "stopping" ? "Stopping..." : "Stop billing"}
+            </Button>
+          )}
+        </Group>
+        {phase === "stopping" && (
+          <Text size="sm" c="dimmed" role="status" maw="60ch">
+            Finishing the batch in progress, then stopping. Invoices already created are kept, and running billing again carries on from here.
+          </Text>
+        )}
+        {due === 0 && !totals && <Text size="sm" c="dimmed">Nothing is due.</Text>}
+      </Stack>
+
+      {error && <Text size="sm" c="red" role="alert">{error}</Text>}
 
       {totals && (
-        <section className="space-y-3" aria-live="polite">
-          <h2 className="text-lg font-medium">{finished ? "Run complete" : running ? "In progress" : "Run stopped"}</h2>
-          <dl className="grid grid-cols-3 gap-4 text-sm">
-            <div><dt className="text-zinc-400">Invoices created</dt><dd className="text-xl font-semibold">{totals.created}</dd></div>
-            <div><dt className="text-zinc-400">Skipped (already billed)</dt><dd className="text-xl font-semibold">{totals.skipped}</dd></div>
-            <div><dt className="text-zinc-400">Failed</dt><dd className="text-xl font-semibold">{totals.failed.length}</dd></div>
-          </dl>
-          {totals.failed.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Failures</h3>
-              <ul className="divide-y divide-zinc-800 rounded-md border border-zinc-800 text-sm">
-                {totals.failed.slice(0, SHOWN_FAILURES).map((f) => (
-                  <li key={f.subscriptionId} className="flex justify-between gap-4 px-4 py-2">
-                    <Link href={`/subscriptions/${f.subscriptionId}`} className="font-mono underline">{f.number}</Link>
-                    <span className="text-red-400">{f.reason}</span>
-                  </li>
-                ))}
-              </ul>
-              {totals.failed.length > SHOWN_FAILURES && (
-                <p className="text-sm text-zinc-400">Showing the first {SHOWN_FAILURES} of {totals.failed.length}.</p>
-              )}
-            </div>
+        <Stack gap="md" aria-live="polite">
+          <Title order={2} fz="h4">{heading}</Title>
+          <SimpleGrid cols={3} maw={520}>
+            {[
+              ["Invoices created", totals.created],
+              ["Skipped (already billed)", totals.skipped],
+              ["Failed", totals.failed.length],
+            ].map(([label, value]) => (
+              <Stack key={label} gap={2}>
+                <Text size="sm" c="dimmed">{label}</Text>
+                <Text fz="1.4rem" fw={600} style={numeric}>{count(Number(value))}</Text>
+              </Stack>
+            ))}
+          </SimpleGrid>
+          {outcome === "stopped" && (
+            <Text size="sm" c="dimmed" maw="60ch">
+              Stopped after {count(totals.chunks)} {totals.chunks === 1 ? "batch" : "batches"}. The count above shows what is still due.
+            </Text>
           )}
-        </section>
+          {totals.failed.length > 0 && (
+            <Stack gap="xs">
+              <Title order={3} fz="sm">Failures</Title>
+              <Paper withBorder p="sm">
+                <Stack gap="xs">
+                  {totals.failed.slice(0, SHOWN_FAILURES).map((f) => (
+                    <Group key={f.subscriptionId} justify="space-between" wrap="nowrap" align="flex-start">
+                      <AppAnchor href={`/subscriptions/${f.subscriptionId}`} size="sm" ff="monospace">{f.number}</AppAnchor>
+                      <Text size="sm" c="red" ta="right">{f.reason}</Text>
+                    </Group>
+                  ))}
+                </Stack>
+              </Paper>
+              {totals.failed.length > SHOWN_FAILURES && (
+                <Text size="sm" c="dimmed">Showing the first {SHOWN_FAILURES} of {count(totals.failed.length)}.</Text>
+              )}
+            </Stack>
+          )}
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 }
