@@ -1,9 +1,13 @@
 import { Prisma } from "@/generated/prisma/client";
+import type { ActionResult } from "@/lib/errors";
 import { rankEligibleRules } from "@/lib/discount";
 import { toMoney } from "@/lib/money";
 import { periodAfter, utcDay } from "@/lib/period";
 import { priceInvoice, type AppliedDiscount, type LineInput } from "@/lib/pricing";
+import { cursorSchema } from "@/lib/validation/billing";
 import { prisma } from "@/server/db";
+import { requireRole } from "@/server/auth/require-role";
+import { denyUnlessRole, invalid } from "./guard";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INVOICE_NUMBER_LOCK = 7002;
@@ -231,4 +235,26 @@ async function nextInvoiceNumber(tx: Tx, counter: Counter): Promise<string> {
     counter.next = (latest ?? 0) + 1;
   }
   return `INV-${String(counter.next++).padStart(5, "0")}`;
+}
+
+/** Subscriptions a run would bill today. */
+export async function getDueCount(): Promise<number> {
+  await requireRole("ADMIN", "STAFF");
+  const [{ due }] = await prisma.$queryRaw<{ due: number }[]>`
+    SELECT COUNT(*)::int AS due FROM "Subscription"
+    WHERE "status" = 'ACTIVE' AND NOT "isPaused"
+      AND "nextBillingDate" <= ${utcDay(new Date())} AND "nextBillingDate" <= "expiryDate"`;
+  return due;
+}
+
+/**
+ * One chunk of a run for a signed-in user. Today comes from the server clock, never from the
+ * client, so nobody can bill future periods early.
+ */
+export async function runBillingChunk(cursor?: string | null): Promise<ActionResult<BillingChunk>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  const parsed = cursorSchema.safeParse(cursor);
+  if (!parsed.success) return invalid(parsed.error);
+  return { ok: true, data: await runBilling({ today: new Date(), cursor: parsed.data ?? undefined }) };
 }

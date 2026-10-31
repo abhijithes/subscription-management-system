@@ -133,8 +133,10 @@ Created by the seed script.
 
 ## Running the Billing Job
 
-- **Manual:** the admin uses the "Run billing" action on the Invoices page.
-- **Scheduled:** a cron job runs daily and bills every subscription whose `next_billing_date` is due.
+- **Manual:** Admin and Staff open **/billing**, check how many subscriptions are due, and press **Run billing**. The page runs chunks of 50 until nothing is left and lists any failures with their reason.
+- **Scheduled:** a cron job sends `POST /api/billing/run` with the header `x-billing-secret: <BILLING_CRON_SECRET>`. A wrong, missing or unset secret gets `401`. The call keeps running chunks for about 50 seconds. If `complete` is `false` in the response, call again with `?cursor=<nextCursor>`.
+- **Safe to repeat:** a period that already has an invoice is skipped, so running twice never bills twice.
+- Set the secret with a long random value, for example `openssl rand -hex 32`, in `.env.local` (and in the host's environment variables).
 
 ## Project Structure
 
