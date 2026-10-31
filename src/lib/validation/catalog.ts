@@ -110,9 +110,11 @@ export const discountRuleSchema = z
       .transform(Number)
       .pipe(z.number().min(1, "Usage limit must be at least 1")),
     appliesTo: z.enum(["PRODUCT", "SUBSCRIPTION"], "Pick what it applies to"),
+    // The product picker is not in the form for whole-subscription rules, so it may be missing.
     productId: z
       .string()
       .trim()
+      .optional()
       .transform((v) => v || undefined),
   })
   .superRefine((rule, ctx) => {
