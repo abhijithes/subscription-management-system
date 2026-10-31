@@ -18,3 +18,13 @@ export async function denyUnlessRole(...roles: Role[]): Promise<ActionResult<nev
 export function invalid(error: z.ZodError): ActionResult<never> {
   return { ok: false, fieldErrors: fieldErrorsOf(error), message: "Fix the highlighted fields" };
 }
+
+/** Turns a rule violation thrown inside `fn` into an `ok: false` result. */
+export async function guarded<T>(fn: () => Promise<ActionResult<T>>): Promise<ActionResult<T>> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof RuleError) return { ok: false, message: error.message };
+    throw error;
+  }
+}

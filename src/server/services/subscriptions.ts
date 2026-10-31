@@ -2,19 +2,22 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { SubscriptionStatus } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/lib/errors";
 import { linePrice } from "@/lib/pricing";
+import { round2, sumMoney } from "@/lib/money";
+import { assertPlanAllows, canTransition, nextStatus } from "@/lib/status";
 import {
   fromTemplateSchema,
   subscriptionSchemaFor,
   templateSchemaFor,
   type FromTemplateInput,
   type SubscriptionInput,
+  subscriptionStatusSchema,
   type TemplateDates,
   type TemplateInput,
 } from "@/lib/validation/subscription";
 import { prisma } from "@/server/db";
 import { requireRole } from "@/server/auth/require-role";
 import { PAGE_SIZE } from "./catalog";
-import { denyUnlessRole, invalid } from "./guard";
+import { denyUnlessRole, guarded, invalid } from "./guard";
 
 const linesError = (message: string): ActionResult<never> => ({
   ok: false,
@@ -128,6 +131,8 @@ export async function getTemplateFormOptions() {
     })),
   };
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Created = ActionResult<{ id: string; number: string }>;
 type NewLine = { productId: string; variantId: string | null; quantity: number; taxId: string | null };
@@ -255,7 +260,7 @@ export async function createSubscriptionFromTemplate(
     startDate,
     expiryDate,
     paymentTermsDays,
-    quotationExpiresAt: new Date(Date.now() + template.validityDays * 24 * 60 * 60 * 1000),
+    quotationExpiresAt: new Date(Date.now() + template.validityDays * DAY_MS),
     lines: template.lines.map((l) => ({
       productId: l.productId,
       variantId: l.variantId,
@@ -338,5 +343,163 @@ export async function getSubscriptionFormOptions() {
     taxes: taxes.map((t) => ({ id: t.id, name: t.name, ratePercent: t.ratePercent.toFixed(2) })),
     plans: planAndProducts.plans,
     products: planAndProducts.products,
+  };
+}
+
+function today(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+const loadWithPlan = (id: string) => prisma.subscription.findUnique({ where: { id }, include: { plan: true } });
+const notFound: ActionResult<never> = { ok: false, message: "Subscription not found" };
+const changedMeanwhile: ActionResult<never> = {
+  ok: false,
+  message: "This subscription was changed by someone else. Reload and try again.",
+};
+
+/** Moves a subscription to the next status. Closing has its own rules, so it goes through closeSubscription. */
+export async function advanceStatus(id: string, to: SubscriptionStatus): Promise<ActionResult<{ status: SubscriptionStatus }>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  const target = subscriptionStatusSchema.safeParse(to);
+  if (!target.success) return invalid(target.error);
+
+  return guarded(async () => {
+    const sub = await loadWithPlan(id);
+    if (!sub) return notFound;
+    if (target.data === "CLOSED") return { ok: false, message: "Use Close to close a subscription" };
+    if (!canTransition(sub.status, target.data)) {
+      return { ok: false, message: `A ${sub.status.toLowerCase()} subscription cannot become ${target.data.toLowerCase()}` };
+    }
+    const moved = await prisma.subscription.updateMany({
+      where: { id, status: sub.status },
+      data: { status: target.data, ...(target.data === "ACTIVE" ? { nextBillingDate: sub.startDate } : {}) },
+    });
+    return moved.count === 0 ? changedMeanwhile : { ok: true, data: { status: target.data } };
+  });
+}
+
+export async function pauseSubscription(id: string): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  return guarded(async () => {
+    const sub = await loadWithPlan(id);
+    if (!sub) return notFound;
+    if (sub.status !== "ACTIVE") return { ok: false, message: "Only an active subscription can be paused" };
+    if (sub.isPaused) return { ok: false, message: "This subscription is already paused" };
+    assertPlanAllows("pause", sub.plan);
+    const paused = await prisma.subscription.updateMany({
+      where: { id, status: "ACTIVE", isPaused: false },
+      data: { isPaused: true, pausedAt: new Date() },
+    });
+    return paused.count === 0 ? changedMeanwhile : { ok: true, data: { id } };
+  });
+}
+
+/** Resumes billing from today, so the paused time is not back-billed. */
+export async function resumeSubscription(id: string): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  return guarded(async () => {
+    const sub = await loadWithPlan(id);
+    if (!sub) return notFound;
+    if (sub.status !== "ACTIVE" || !sub.isPaused) return { ok: false, message: "This subscription is not paused" };
+    const resumed = await prisma.subscription.updateMany({
+      where: { id, status: "ACTIVE", isPaused: true },
+      data: { isPaused: false, pausedAt: null, nextBillingDate: today() },
+    });
+    return resumed.count === 0 ? changedMeanwhile : { ok: true, data: { id } };
+  });
+}
+
+/** Closing before the expiry date needs the plan's early-close option; an expired subscription can always be closed. */
+export async function closeSubscription(id: string): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  return guarded(async () => {
+    const sub = await loadWithPlan(id);
+    if (!sub) return notFound;
+    if (!canTransition(sub.status, "CLOSED")) {
+      return { ok: false, message: `A ${sub.status.toLowerCase()} subscription cannot be closed` };
+    }
+    if (sub.expiryDate > today()) assertPlanAllows("close", sub.plan);
+    const closed = await prisma.subscription.updateMany({
+      where: { id, status: sub.status },
+      data: { status: "CLOSED", isPaused: false, pausedAt: null, nextBillingDate: null },
+    });
+    return closed.count === 0 ? changedMeanwhile : { ok: true, data: { id } };
+  });
+}
+
+/** Extends the expiry by the current start-to-expiry length and keeps the subscription number. */
+export async function renewSubscription(id: string): Promise<ActionResult<{ id: string }>> {
+  const denied = await denyUnlessRole("ADMIN", "STAFF");
+  if (denied) return denied;
+  return guarded(async () => {
+    const sub = await loadWithPlan(id);
+    if (!sub) return notFound;
+    if (sub.status !== "ACTIVE") return { ok: false, message: "Only an active subscription can be renewed" };
+    assertPlanAllows("renew", sub.plan);
+    const duration = sub.expiryDate.getTime() - sub.startDate.getTime();
+    const renewed = await prisma.subscription.updateMany({
+      where: { id, status: "ACTIVE", expiryDate: sub.expiryDate },
+      data: { expiryDate: new Date(sub.expiryDate.getTime() + duration) },
+    });
+    return renewed.count === 0 ? changedMeanwhile : { ok: true, data: { id } };
+  });
+}
+
+/** One subscription with its lines and the actions this person can take on it right now. */
+export async function getSubscription(id: string) {
+  await requireRole("ADMIN", "STAFF");
+  const sub = await prisma.subscription.findUnique({
+    where: { id },
+    include: {
+      customer: { select: { name: true, email: true } },
+      plan: true,
+      lines: {
+        orderBy: { id: "asc" },
+        include: { product: { select: { name: true } }, variant: { select: { attribute: true, value: true } }, tax: true },
+      },
+    },
+  });
+  if (!sub) return null;
+
+  const active = sub.status === "ACTIVE";
+  const expired = active && sub.expiryDate < today();
+  const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? null;
+  const lines = sub.lines.map((l) => ({
+    id: l.id,
+    product: l.product.name,
+    variant: l.variant ? `${l.variant.attribute}: ${l.variant.value}` : null,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice.toFixed(2),
+    tax: l.tax ? `${l.tax.name} (${l.tax.ratePercent.toFixed(2)}%)` : null,
+    amount: round2(l.unitPrice.times(l.quantity)).toFixed(2),
+  }));
+
+  return {
+    id: sub.id,
+    number: sub.number,
+    status: sub.status,
+    isPaused: sub.isPaused,
+    expired,
+    customer: sub.customer,
+    plan: { name: sub.plan.name, billingPeriod: sub.plan.billingPeriod, price: sub.plan.price.toFixed(2) },
+    startDate: day(sub.startDate)!,
+    expiryDate: day(sub.expiryDate)!,
+    paymentTermsDays: sub.paymentTermsDays,
+    nextBillingDate: day(sub.nextBillingDate),
+    quotationExpiresAt: day(sub.quotationExpiresAt),
+    lines,
+    subtotal: round2(sumMoney(sub.lines.map((l) => round2(l.unitPrice.times(l.quantity))))).toFixed(2),
+    actions: {
+      next: active || sub.status === "CLOSED" ? null : nextStatus(sub.status),
+      canPause: active && !sub.isPaused && sub.plan.allowPause,
+      canResume: active && sub.isPaused,
+      canClose: active && (expired || sub.plan.allowEarlyClose),
+      canRenew: active && sub.plan.allowRenew,
+    },
   };
 }
