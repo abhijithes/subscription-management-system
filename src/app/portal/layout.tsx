@@ -8,7 +8,7 @@ export default async function PortalLayout({
 }: {
   children: ReactNode;
 }) {
-  const user = await requireRole(["CUSTOMER"]);
+  const user = await requireRole("CUSTOMER");
 
   return (
     <div className="flex min-h-svh w-full flex-col overflow-x-clip">
