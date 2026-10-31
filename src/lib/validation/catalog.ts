@@ -74,3 +74,60 @@ export const taxSchema = z.object({
 
 export type PlanInput = z.input<typeof planSchema>;
 export type TaxInput = z.input<typeof taxSchema>;
+
+const optionalMoney = z
+  .string()
+  .trim()
+  .transform((v) => (v === "" ? undefined : v))
+  .pipe(money.optional());
+
+const optionalWholeNumber = z
+  .string()
+  .trim()
+  .transform((v) => (v === "" ? undefined : v))
+  .pipe(
+    z
+      .string()
+      .regex(/^\d+$/, "Enter a whole number")
+      .transform(Number)
+      .pipe(z.number().min(1, "Must be at least 1"))
+      .optional(),
+  );
+
+export const discountRuleSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(120),
+    type: z.enum(["FIXED", "PERCENT"], "Pick a type"),
+    value: money,
+    minPurchase: optionalMoney,
+    minQuantity: optionalWholeNumber,
+    startsAt: isoDate,
+    endsAt: isoDate,
+    usageLimit: z
+      .string()
+      .trim()
+      .regex(/^\d+$/, "Enter a whole number")
+      .transform(Number)
+      .pipe(z.number().min(1, "Usage limit must be at least 1")),
+    appliesTo: z.enum(["PRODUCT", "SUBSCRIPTION"], "Pick what it applies to"),
+    productId: z
+      .string()
+      .trim()
+      .transform((v) => v || undefined),
+  })
+  .superRefine((rule, ctx) => {
+    if (Number(rule.value) <= 0) {
+      ctx.addIssue({ code: "custom", path: ["value"], message: "Value must be more than 0" });
+    }
+    if (rule.type === "PERCENT" && Number(rule.value) > 100) {
+      ctx.addIssue({ code: "custom", path: ["value"], message: "A percentage cannot be more than 100" });
+    }
+    if (rule.endsAt < rule.startsAt) {
+      ctx.addIssue({ code: "custom", path: ["endsAt"], message: "Must not be before the start date" });
+    }
+    if (rule.appliesTo === "PRODUCT" && !rule.productId) {
+      ctx.addIssue({ code: "custom", path: ["productId"], message: "Pick a product" });
+    }
+  });
+
+export type DiscountRuleInput = z.input<typeof discountRuleSchema>;
