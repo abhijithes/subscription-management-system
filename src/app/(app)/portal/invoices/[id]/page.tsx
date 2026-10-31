@@ -94,6 +94,26 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
           <Text fw={600} style={numeric}>{amount(invoice.total)}</Text>
         </Group>
       </Stack>
+
+      <Stack gap="sm">
+        <Title order={2} fz="h4">Payments</Title>
+        {invoice.payments.length === 0 ? (
+          <Text size="sm" c="dimmed">No payment has been received for this invoice yet.</Text>
+        ) : (
+          <Paper withBorder p="md">
+            <Stack gap="xs">
+              {invoice.payments.map((payment) => (
+                <Group key={payment.id} justify="space-between" wrap="nowrap">
+                  <Text size="sm">
+                    <Text span style={numeric}>{payment.paidAt}</Text> · {payment.method.replace(/_/g, " ").toLowerCase()}
+                  </Text>
+                  <Text size="sm" style={numeric}>{amount(payment.amount)}</Text>
+                </Group>
+              ))}
+            </Stack>
+          </Paper>
+        )}
+      </Stack>
     </>
   );
 }
