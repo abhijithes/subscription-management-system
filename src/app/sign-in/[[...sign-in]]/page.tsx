@@ -1,14 +1,19 @@
+import { Suspense } from "react";
 import { SignIn } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { AuthSkeleton } from "@/components/auth-skeleton";
 
 export default function Page() {
   return (
     <div className="w-full h-screen grid place-items-center">
-      <SignIn
-        appearance={{
-          theme: dark,
-        }}
-      />
+      {/* Clerk reads the URL on the client, which this app's caching setup needs inside Suspense. */}
+      <Suspense fallback={<AuthSkeleton />}>
+        <SignIn
+          appearance={{
+            theme: dark,
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
