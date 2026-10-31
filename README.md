@@ -57,7 +57,7 @@ Brightloop tracks subscriptions in a spreadsheet, types invoices by hand, matche
 | Layer | Choice |
 |---|---|
 | Frontend | Next.js (React), responsive UI |
-| Backend | NestJS (REST API) |
+| Backend | Next.js Route Handlers (REST API) |
 | Database | PostgreSQL |
 | ORM | Prisma |
 | Auth | JWT with role-based guards |
@@ -84,31 +84,23 @@ Brightloop tracks subscriptions in a spreadsheet, types invoices by hand, matche
 
 ### Setup
 
+The app is a single Next.js project: React pages plus REST Route Handlers in `src/app/api`.
+
 ```bash
 # 1. Clone
 git clone <repo-url>
 cd <repo-folder>
 
-# 2. Start PostgreSQL
-docker compose up -d db
-
-# 3. Backend
-cd backend
-cp .env.example .env
+# 2. Install
 npm install
-npx prisma migrate dev
-npm run seed          # demo data, including thousands of subscriptions
-npm run start:dev
 
-# 4. Frontend (new terminal)
-cd frontend
-cp .env.example .env.local
-npm install
+# 3. Run
 npm run dev
 ```
 
-- Frontend: http://localhost:3000
-- API: http://localhost:4000
+- App: http://localhost:3000
+- API: http://localhost:3000/api
+- Health check: http://localhost:3000/api/health
 
 ### Environment variables
 
@@ -118,8 +110,7 @@ npm run dev
 | `JWT_SECRET` | Secret used to sign tokens |
 | `JWT_EXPIRES_IN` | Token lifetime, for example `1d` |
 | `MAIL_HOST`, `MAIL_USER`, `MAIL_PASS` | SMTP settings for reset links (if unset, the link is printed to the server console) |
-| `APP_URL` | Frontend base URL used in reset links |
-| `NEXT_PUBLIC_API_URL` | API base URL for the frontend |
+| `APP_URL` | App base URL used in reset links |
 
 ## Demo Accounts
 
@@ -140,20 +131,22 @@ Created by the seed script.
 
 ```
 .
-├── backend/
-│   ├── prisma/          # schema, migrations, seed
-│   └── src/
-│       ├── auth/        # signup, login, reset, role guards
-│       ├── products/    # products, variants
-│       ├── plans/
-│       ├── templates/   # quotation templates
-│       ├── subscriptions/
-│       ├── invoices/    # generation, taxes, lifecycle
-│       ├── discounts/
-│       ├── payments/
-│       └── dashboard/   # aggregates and filters
-├── frontend/
-│   └── src/             # admin/staff app and customer portal
+├── prisma/                  # schema, migrations, seed
+├── src/
+│   ├── app/                 # admin/staff pages and customer portal
+│   │   └── api/             # REST route handlers
+│   │       ├── auth/
+│   │       ├── products/
+│   │       ├── plans/
+│   │       ├── subscriptions/
+│   │       ├── invoices/
+│   │       ├── discounts/
+│   │       ├── payments/
+│   │       ├── dashboard/
+│   │       └── health/
+│   ├── components/
+│   └── lib/                 # db client, auth, validation
+├── public/
 ├── docker-compose.yml
 └── README.md
 ```
