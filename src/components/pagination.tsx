@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { Group, Text } from "@mantine/core";
+import { AppAnchor } from "@/components/app-anchor";
 
 type Props = {
   basePath: string;
@@ -19,14 +20,14 @@ export function Pagination({ basePath, page, pageSize, total, noun, query = {} }
     return `${basePath}?${params}`;
   };
   return (
-    <div className="flex items-center justify-between text-sm text-zinc-400">
-      <span>
-        Page {page} of {pages} ({total} {noun})
-      </span>
-      <span className="space-x-4">
-        {page > 1 && <Link href={hrefFor(page - 1)} className="underline">Previous</Link>}
-        {page < pages && <Link href={hrefFor(page + 1)} className="underline">Next</Link>}
-      </span>
-    </div>
+    <Group justify="space-between" gap="md" aria-label="Pagination">
+      <Text size="sm" c="dimmed">
+        Page {page} of {pages} ({total.toLocaleString("en-US")} {noun})
+      </Text>
+      <Group gap="md">
+        {page > 1 && <AppAnchor href={hrefFor(page - 1)} size="sm">Previous</AppAnchor>}
+        {page < pages && <AppAnchor href={hrefFor(page + 1)} size="sm">Next</AppAnchor>}
+      </Group>
+    </Group>
   );
 }
