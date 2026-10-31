@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { fieldErrorsOf, staffSchema } from "@/lib/validation/staff";
+import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { staffSchema } from "@/lib/validation/staff";
 import { createStaffAction } from "./actions";
 
 const inputClass = "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
