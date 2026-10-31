@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Container, Skeleton, Stack, Title } from "@mantine/core";
 import { AccessDenied } from "@/components/access-denied";
 import { RuleError } from "@/lib/errors";
 import { getDueCount } from "@/server/services/billing";
@@ -6,12 +7,21 @@ import { BillingRunner } from "./billing-runner";
 
 export default function BillingPage() {
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-6">
-      <h1 className="text-2xl font-semibold">Billing run</h1>
-      <Suspense fallback={<p className="text-sm text-zinc-400">Loading...</p>}>
-        <BillingContent />
-      </Suspense>
-    </main>
+    <Container size="md" py="lg" w="100%">
+      <Stack gap="lg">
+        <Title order={1} fz="h2">Billing run</Title>
+        <Suspense
+          fallback={
+            <Stack gap="sm" aria-busy="true" aria-label="Loading">
+              <Skeleton h={40} w="55%" />
+              <Skeleton h={36} w={140} />
+            </Stack>
+          }
+        >
+          <BillingContent />
+        </Suspense>
+      </Stack>
+    </Container>
   );
 }
 
