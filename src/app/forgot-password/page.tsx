@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSignIn } from "@clerk/nextjs";
+import { useAuth, useSignIn } from "@clerk/nextjs";
 import { validatePassword } from "@/lib/password";
 
 type Step = "email" | "code" | "password";
@@ -14,6 +14,7 @@ const buttonClass =
 
 export default function ForgotPasswordPage() {
   const { signIn } = useSignIn();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -21,6 +22,10 @@ export default function ForgotPasswordPage() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (isSignedIn) router.replace("/");
+  }, [isSignedIn, router]);
 
   async function run(action: () => Promise<{ error: { message: string } | null }>, next: () => void) {
     setBusy(true);
