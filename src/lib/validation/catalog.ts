@@ -1,9 +1,5 @@
 import { z } from "zod";
-
-const money = z
-  .string()
-  .trim()
-  .regex(/^\d{1,10}(\.\d{1,2})?$/, "Enter an amount like 10 or 10.50");
+import { isoDate, money } from "./fields";
 
 export const productSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
@@ -30,12 +26,6 @@ export const variantSchema = z.object({
 
 export type ProductInput = z.input<typeof productSchema>;
 export type VariantInput = z.input<typeof variantSchema>;
-
-const isoDate = z
-  .string()
-  .trim()
-  .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v), "Pick a valid date")
-  .transform((v) => new Date(`${v}T00:00:00Z`));
 
 export const BILLING_PERIODS = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] as const;
 
