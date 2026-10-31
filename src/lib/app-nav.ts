@@ -15,7 +15,7 @@ const sales: NavGroup = {
 
 /** The sidebar for each role (spec section 7). Admin-only areas never reach Staff or Customers. */
 export function navFor(role: Role): NavGroup[] {
-  if (role === "CUSTOMER") return [{ title: "Your account", links: [{ label: "Portal", href: "/portal" }] }];
+  if (role === "CUSTOMER") return [{ title: "Your account", links: [{ label: "Subscriptions", href: "/portal" }, { label: "Invoices", href: "/portal/invoices" }] }];
   const common: NavGroup[] = [{ title: "Overview", links: [{ label: "Dashboard", href: "/dashboard" }] }, sales];
   if (role === "STAFF") return common;
   return [

@@ -23,6 +23,7 @@ import { AppAnchor } from "@/components/app-anchor";
 import { RuleError } from "@/lib/errors";
 import { getInvoice } from "@/server/services/invoices";
 import { InvoiceActions } from "./invoice-actions";
+import { PaymentForm } from "./payment-form";
 
 const STATUS_COLOUR = { DRAFT: "gray", CONFIRMED: "indigo", PAID: "green" } as const;
 const numeric = { fontVariantNumeric: "tabular-nums" } as const;
@@ -166,6 +167,7 @@ async function InvoiceDetail({ params }: { params: Promise<{ id: string }> }) {
           </Paper>
         )}
       </Stack>
+      {invoice.status === "CONFIRMED" && <PaymentForm invoiceId={invoice.id} total={invoice.total} />}
     </>
   );
 }
