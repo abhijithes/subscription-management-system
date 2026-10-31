@@ -1,6 +1,7 @@
 allowBuilds:
   '@clerk/shared': false
   '@prisma/engines': true
+  esbuild: true
   prisma: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
