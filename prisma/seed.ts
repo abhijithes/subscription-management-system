@@ -1,6 +1,6 @@
 /**
  * Seed data for Brightloop. `pnpm run db:seed` is safe to re-run (it finds or creates by name and
- * email). `pnpm run db:seed:volume` also adds 5,000 subscriptions with invoices and payments from
+ * email). `pnpm run db:seed:volume` also adds 50 subscriptions with invoices and payments from
  * a fixed random seed, so timings are comparable run to run. It writes to whatever DATABASE_URL
  * points at, so check that first.
  *
@@ -109,7 +109,7 @@ async function seedVolume(base: Awaited<ReturnType<typeof seedCatalog>>, count: 
     return;
   }
 
-  const customerRows = Array.from({ length: 300 }, (_, i) => ({
+  const customerRows = Array.from({ length: 20 }, (_, i) => ({
     email: `volume${i}@customers.test`,
     name: `Volume Customer ${i}`,
     company: `Company ${i}`,
@@ -203,7 +203,7 @@ async function seedVolume(base: Awaited<ReturnType<typeof seedCatalog>>, count: 
 async function main() {
   const base = await seedCatalog();
   console.log("Base seed done.");
-  if (process.argv.includes("--volume")) await seedVolume(base, 5000);
+  if (process.argv.includes("--volume")) await seedVolume(base, 50);
 }
 
 main()
