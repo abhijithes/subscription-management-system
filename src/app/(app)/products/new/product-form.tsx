@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { fieldErrorsOf } from "@/lib/validation/field-errors";
+import { useActionState } from "react";
+import { useLiveValidation } from "@/lib/validation/use-live-validation";
 import { productSchema } from "@/lib/validation/catalog";
 import { createProductAction } from "../actions";
 
@@ -15,18 +15,11 @@ const fields = [
 
 export function ProductForm() {
   const [result, action, pending] = useActionState(createProductAction, null);
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
-  const errors = { ...(result && !result.ok ? result.fieldErrors : {}), ...clientErrors };
-
-  function check(e: React.FormEvent<HTMLFormElement>) {
-    const parsed = productSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)));
-    if (parsed.success) return setClientErrors({});
-    e.preventDefault();
-    setClientErrors(fieldErrorsOf(parsed.error));
-  }
+  const { formProps, errorsWith } = useLiveValidation(productSchema);
+  const errors = errorsWith(result && !result.ok ? result.fieldErrors : undefined);
 
   return (
-    <form action={action} onSubmit={check} className="space-y-3">
+    <form action={action} {...formProps} className="space-y-3">
       {fields.map((f) => (
         <div key={f.name}>
           <label className="mb-1 block text-sm text-zinc-400" htmlFor={f.name}>{f.label}</label>
